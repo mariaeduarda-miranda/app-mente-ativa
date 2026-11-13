@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('./config');
 const { query } = require('./db');
-const { normalizeEmail, validateRegistration, validateLogin } = require('./validators');
+const { normalizeEmail, validateRegistration, validateLogin, validatePassword, validateProfileUpdate } = require('./validators');
 
 /**
  * Hash "descartavel" usado para igualar o tempo de resposta quando o e-mail
@@ -142,6 +142,95 @@ async function me(req, res) {
 }
 
 /**
+ * PUT /me (protegido por authenticateJWT)
+ * Atualiza nome e/ou e-mail do usuario autenticado. Como o JWT carrega
+ * nome e e-mail, um novo token e emitido para manter a sessao coerente.
+ */
+async function updateProfile(req, res) {
+  const { name, email } = req.body || {};
+
+  const errors = validateProfileUpdate({ name, email });
+  if (errors.length > 0) {
+    return res.status(400).json({ error: errors[0], details: errors });
+  }
+
+  const nextName = name === undefined ? null : String(name).trim();
+  const nextEmail = email === undefined ? null : normalizeEmail(email);
+
+  try {
+    const { rows } = await query(
+      `UPDATE users
+          SET name = COALESCE($1, name),
+              email = COALESCE($2, email)
+        WHERE id = $3
+        RETURNING id, name, email, is_active, created_at, updated_at`,
+      [nextName, nextEmail, req.user.id]
+    );
+
+    const user = rows[0];
+    if (!user || !user.is_active) {
+      return res.status(401).json({ error: 'Sessão inválida. Faça login novamente.' });
+    }
+
+    return res.status(200).json(buildSession(user));
+  } catch (error) {
+    // 23505 = violacao do indice unico em lower(email). Outros erros sobem
+    // para o tratamento centralizado (Express 5 encaminha rejeicoes async).
+    if (error?.code === '23505') {
+      return res.status(409).json({ error: 'Já existe uma conta com este e-mail.' });
+    }
+    throw error;
+  }
+}
+
+/**
+ * PUT /me/password (protegido por authenticateJWT)
+ * Troca a senha mediante confirmacao da senha atual.
+ */
+async function changePassword(req, res) {
+  const { currentPassword, newPassword } = req.body || {};
+
+  if (!currentPassword) {
+    return res.status(400).json({ error: 'Informe a senha atual.' });
+  }
+
+  const passwordError = validatePassword(newPassword, { isRegistration: true });
+  if (passwordError) {
+    return res.status(400).json({ error: passwordError });
+  }
+
+  if (String(currentPassword) === String(newPassword)) {
+    return res.status(400).json({ error: 'A nova senha deve ser diferente da atual.' });
+  }
+
+  const { rows } = await query(
+    `SELECT password_hash, is_active
+       FROM users
+      WHERE id = $1
+      LIMIT 1`,
+    [req.user.id]
+  );
+
+  const user = rows[0];
+  if (!user || !user.is_active) {
+    return res.status(401).json({ error: 'Sessão inválida. Faça login novamente.' });
+  }
+
+  const passwordMatches = await bcrypt.compare(String(currentPassword), user.password_hash);
+  if (!passwordMatches) {
+    return res.status(401).json({ error: 'Senha atual incorreta.' });
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, config.bcryptRounds);
+  await query('UPDATE users SET password_hash = $1 WHERE id = $2', [
+    passwordHash,
+    req.user.id,
+  ]);
+
+  return res.status(200).json({ message: 'Senha atualizada com sucesso.' });
+}
+
+/**
  * POST /verifyToken (e equivalente ao GET /me)
  * Mantido para compatibilidade com a versao anterior do app mobile.
  */
@@ -184,6 +273,8 @@ module.exports = {
   register,
   login,
   me,
+  updateProfile,
+  changePassword,
   verifyToken,
   // Exportados para testes/reuso.
   buildSession,

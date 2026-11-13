@@ -16,13 +16,14 @@ app-mente-ativa/
 ├── backend/                  API Express
 │   ├── docker-compose.yml    PostgreSQL 17 + pgAdmin (Docker)
 │   ├── pgadmin/servers.json  servidor já cadastrado no pgAdmin
-│   ├── sql/001_init.sql      schema da tabela users
+│   ├── sql/                  schemas (users, game_sessions)
 │   ├── scripts/              db-setup e smoke test
 │   └── src/                  app, rotas, controllers, middlewares
 ├── mobile/                   app Expo (React Native)
 │   └── src/
-│       ├── components/       estilos compartilhados das telas de auth
-│       ├── screens/          Home, Login e SignUp
+│       ├── components/       estilos de auth + barra de navegação inferior
+│       ├── data/             bancos de perguntas e pares dos jogos
+│       ├── screens/          Home, Login, SignUp, Games, Perfil, jogos e progresso
 │       └── services/         api (HTTP) e session (AsyncStorage)
 └── package.json              atalhos para rodar tudo
 ```
@@ -65,7 +66,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 
 ```powershell
 npm run db:up      # sobe PostgreSQL + pgAdmin e espera os healthchecks
-npm run db:setup   # aplica sql/001_init.sql e cria o usuário de teste
+npm run db:setup   # aplica todos os sql/*.sql e cria o usuário de teste
 ```
 
 O `db:setup` cria:
@@ -85,7 +86,8 @@ Com os containers no ar, abra <http://localhost:5050> e entre com:
 
 O servidor **Mente Ativa (Docker)** já vem cadastrado. Ao clicar nele, o pgAdmin pede
 a senha do PostgreSQL (`mente_ativa_dev`); marque **Save Password** para não digitar de novo.
-Depois é só navegar em `Databases > mente_ativa > Schemas > public > Tables > users`.
+Depois é só navegar em `Databases > mente_ativa > Schemas > public > Tables` e abrir
+`users` ou `game_sessions`.
 
 > Essas credenciais são apenas de desenvolvimento e ficam no `backend/.env`
 > (`PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD`, `PGADMIN_PORT`).
@@ -128,6 +130,20 @@ npx expo start -c
 
 > Libere a porta 3000 no firewall do Windows para redes privadas na primeira execução.
 
+## Jogos
+
+Todos rodam em modo foco (sem a barra inferior), têm leitura em voz alta e salvam a
+partida concluída para o usuário autenticado.
+
+| Jogo (`gameKey`) | Rodada | Métrica de acerto |
+|---|---|---|
+| Sequência Lógica (`sequencia`) | 10 perguntas sorteadas de um banco de 20 | respostas certas ÷ perguntas |
+| Jogo da Memória (`memoria`) | 4 pares (8 cartas) sorteados de um banco de 8 pares | pares encontrados ÷ tentativas |
+| Dedução Lógica (`deducao`) | 5 enigmas sorteados de um banco de 12 | respostas certas ÷ enigmas |
+
+A tela **Meu Progresso** usa esses registros para exibir partidas concluídas e a
+média de acertos por jogo.
+
 ## API
 
 | Método | Rota | Autenticação | Descrição |
@@ -136,6 +152,10 @@ npx expo start -c
 | POST | `/register` | — | `{ name, email, password }` → cria conta e devolve token |
 | POST | `/login` | — | `{ email, password }` → devolve token |
 | GET | `/me` | `Bearer <token>` | Dados atualizados do usuário |
+| PUT | `/me` | `Bearer <token>` | Atualiza nome/e-mail e devolve sessão renovada |
+| PUT | `/me/password` | `Bearer <token>` | Troca a senha (senha atual + nova) |
+| POST | `/progress/sessions` | `Bearer <token>` | Registra uma partida concluída |
+| GET | `/progress` | `Bearer <token>` | Resumo do progresso do usuário |
 | POST | `/verifyToken` | token no header ou body | Valida a sessão salva no app |
 
 Resposta de sucesso (login/cadastro):
@@ -160,10 +180,10 @@ Na raiz do projeto:
 | `npm run db:up` | Sobe o PostgreSQL + pgAdmin |
 | `npm run db:down` | Para os containers (mantém os dados) |
 | `npm run db:ps` | Mostra o status dos containers |
-| `npm run db:setup` | Aplica o schema e cria o usuário de teste |
+| `npm run db:setup` | Aplica os schemas SQL e cria o usuário de teste |
 | `npm run db:reset` | Apaga os volumes e recria o banco do zero |
 | `npm run api` | Inicia a API em modo watch |
-| `npm run smoke` | Executa o teste de fumaça do login |
+| `npm run smoke` | Executa o teste de fumaça (auth + progresso) |
 | `npm run mobile` | Inicia o Expo |
 
 ## Banco de dados
@@ -178,6 +198,25 @@ Tabela `users` (`backend/sql/001_init.sql`):
 | `password_hash` | TEXT | bcrypt (custo 12) |
 | `is_active` | BOOLEAN | contas desativadas perdem acesso |
 | `created_at` / `updated_at` | TIMESTAMPTZ | `updated_at` via trigger |
+
+Tabela `game_sessions` (`backend/sql/002_game_sessions.sql`) — partidas concluídas,
+usadas pela tela **Meu Progresso**:
+
+| Coluna | Tipo | Observação |
+|---|---|---|
+| `id` | UUID | `gen_random_uuid()` |
+| `user_id` | UUID | FK `users(id)` com `ON DELETE CASCADE` |
+| `game_key` | TEXT | `sequencia`, `memoria` ou `deducao` |
+| `total_questions` | SMALLINT | 1 a 100 |
+| `correct_answers` | SMALLINT | 0 até `total_questions` |
+| `duration_seconds` | INTEGER | opcional, ≥ 0 |
+| `started_at` | TIMESTAMPTZ | opcional |
+| `finished_at` / `created_at` | TIMESTAMPTZ | `NOW()` por padrão |
+
+O progresso é agregado no banco: `GET /progress` conta as partidas e calcula o
+percentual de acertos por jogo (`sum(correct_answers) / sum(total_questions)`).
+O `db:setup` aplica todos os arquivos de `backend/sql/` em ordem alfabética,
+então novas migrações basta serem adicionadas nessa pasta.
 
 Inspecionar o banco:
 

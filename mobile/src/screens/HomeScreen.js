@@ -10,6 +10,7 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from '@expo/vector-icons';
+import BottomNavigation from '../components/BottomNavigation';
 
 /**
  * Componente: HomeScreen
@@ -24,6 +25,7 @@ import {
  * @param {Function} [props.onStartPress] - Ação ao clicar em 'Entrar e começar'
  * @param {Function} [props.onNotificationPress] - Ação para o ícone de notificações
  * @param {Function} [props.onProfilePress] - Ação para o ícone de perfil
+ * @param {Function} [props.onNavigateTab] - Navegação da barra inferior
  */
 export default function HomeScreen({
   userName = 'visitante',
@@ -31,6 +33,7 @@ export default function HomeScreen({
   onStartPress,
   onNotificationPress,
   onProfilePress,
+  onNavigateTab,
 }) {
   // Ação padrão do botão principal
   const handleDefaultStart = () => {
@@ -143,6 +146,11 @@ export default function HomeScreen({
           </MainActionButton>
         </CenterContainer>
       </ContentScrollView>
+
+      {/* Barra inferior apenas para usuários autenticados */}
+      {isAuthenticated && (
+        <BottomNavigation activeTab="inicio" onNavigateTab={onNavigateTab} />
+      )}
     </Container>
   );
 }

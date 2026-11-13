@@ -54,10 +54,38 @@ function validateLogin({ email, password }) {
   );
 }
 
+/**
+ * Valida a atualizacao de perfil. Somente os campos enviados sao validados,
+ * e ao menos um deles precisa estar presente.
+ */
+function validateProfileUpdate({ name, email }) {
+  const errors = [];
+  let hasField = false;
+
+  if (name !== undefined) {
+    hasField = true;
+    const error = validateName(name);
+    if (error) errors.push(error);
+  }
+
+  if (email !== undefined) {
+    hasField = true;
+    const error = validateEmail(email);
+    if (error) errors.push(error);
+  }
+
+  if (!hasField) errors.push('Informe ao menos um campo para atualizar.');
+  return errors;
+}
+
 module.exports = {
   MIN_PASSWORD_LENGTH,
   MAX_PASSWORD_LENGTH,
   normalizeEmail,
+  validateName,
+  validateEmail,
+  validatePassword,
   validateRegistration,
   validateLogin,
+  validateProfileUpdate,
 };

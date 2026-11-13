@@ -125,7 +125,51 @@ export function getMe(token) {
   return request('/me', { token });
 }
 
+/**
+ * Atualiza nome e/ou e-mail do usuário autenticado.
+ * A API devolve uma sessão renovada (novo token + usuário atualizado).
+ */
+export function updateProfile(token, { name, email }) {
+  const body = {};
+  if (name !== undefined) body.name = String(name).trim();
+  if (email !== undefined) body.email = String(email).trim();
+
+  return request('/me', { method: 'PUT', body, token });
+}
+
+/** Troca a senha confirmando a senha atual. */
+export function changePassword(token, { currentPassword, newPassword }) {
+  return request('/me/password', {
+    method: 'PUT',
+    body: { currentPassword, newPassword },
+    token,
+  });
+}
+
 /** Diagnostico rapido do backend. */
 export function health() {
   return request('/health', { timeoutMs: 5000 });
+}
+
+/** Progresso agregado do usuário autenticado (partidas e acertos por jogo). */
+export function getProgress(token) {
+  return request('/progress', { token });
+}
+
+/** Registra uma partida concluída para o progresso do usuário. */
+export function saveGameSession(
+  token,
+  { gameKey, totalQuestions, correctAnswers, durationSeconds, startedAt }
+) {
+  return request('/progress/sessions', {
+    method: 'POST',
+    body: {
+      gameKey,
+      totalQuestions,
+      correctAnswers,
+      durationSeconds,
+      startedAt,
+    },
+    token,
+  });
 }

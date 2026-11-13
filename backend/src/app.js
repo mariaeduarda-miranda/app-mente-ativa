@@ -3,6 +3,7 @@ const cors = require('cors');
 const config = require('./config');
 const { pool } = require('./db');
 const authController = require('./authController');
+const progressController = require('./progressController');
 const { authenticateJWT } = require('./authMiddleware');
 const { rateLimit } = require('./rateLimit');
 
@@ -51,6 +52,17 @@ app.post(
 );
 app.post('/verifyToken', authController.verifyToken);
 app.get('/me', authenticateJWT, authController.me);
+app.put('/me', authenticateJWT, authController.updateProfile);
+app.put(
+  '/me/password',
+  authenticateJWT,
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }),
+  authController.changePassword
+);
+
+// --- Progresso dos jogos ----------------------------------------------------
+app.post('/progress/sessions', authenticateJWT, progressController.createSession);
+app.get('/progress', authenticateJWT, progressController.summary);
 
 // --- 404 e tratamento centralizado de erros --------------------------------
 app.use((req, res) => {
