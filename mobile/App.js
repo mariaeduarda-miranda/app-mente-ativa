@@ -5,6 +5,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
+import GamesScreen from './src/screens/GamesScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 import { loadSession, saveSession, clearSession } from './src/services/session';
 import { verifyToken } from './src/services/api';
 
@@ -16,34 +18,40 @@ import { verifyToken } from './src/services/api';
  * - "Entrar e comecar" leva ao Login (ou direto para as atividades, se logado).
  * - Login valida as credenciais na API (Express + PostgreSQL + JWT).
  * - "Criar conta" leva a SignUpScreen.
+ * - Perfil permite atualizar nome, e-mail e senha (PUT /me e /me/password).
  * - Ao abrir o app, a sessao salva e revalidada no backend.
  */
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Home');
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [restoringSession, setRestoringSession] = useState(true);
 
   const restoreSession = useCallback(async () => {
     try {
-      const { token, user: cachedUser } = await loadSession();
+      const { token: storedToken, user: cachedUser } = await loadSession();
 
-      if (!token) {
+      if (!storedToken) {
         setUser(null);
+        setToken(null);
         return;
       }
 
+      setToken(storedToken);
+
       try {
-        const data = await verifyToken(token);
+        const data = await verifyToken(storedToken);
         const freshUser = data?.user || cachedUser;
         if (freshUser) {
           setUser(freshUser);
-          await saveSession({ token, user: freshUser });
+          await saveSession({ token: storedToken, user: freshUser });
         }
       } catch (error) {
         // Token invalido/expirado ou conta desativada: encerra a sessao local.
         if (error?.status === 401 || error?.status === 403) {
           await clearSession();
           setUser(null);
+          setToken(null);
         } else {
           // API indisponivel: mantem os dados em cache para nao deslogar sem motivo.
           setUser(cachedUser || null);
@@ -60,8 +68,9 @@ export default function App() {
     restoreSession();
   }, [restoreSession]);
 
-  const handleAuthenticated = async ({ token, user: authenticatedUser }) => {
-    await saveSession({ token, user: authenticatedUser });
+  const handleAuthenticated = async ({ token: sessionToken, user: authenticatedUser }) => {
+    await saveSession({ token: sessionToken, user: authenticatedUser });
+    setToken(sessionToken);
     setUser(authenticatedUser);
     setCurrentScreen('Home');
     Alert.alert(
@@ -73,8 +82,25 @@ export default function App() {
   const handleLogout = async () => {
     await clearSession();
     setUser(null);
+    setToken(null);
     setCurrentScreen('Home');
     Alert.alert('Sessão encerrada', 'Você foi desconectado com sucesso.');
+  };
+
+  /**
+   * Aplica a sessão renovada devolvida pela API após editar o perfil.
+   */
+  const handleSessionUpdated = async ({ token: nextToken, user: nextUser }) => {
+    const updatedUser = nextUser || user;
+
+    setUser(updatedUser);
+    if (nextToken) setToken(nextToken);
+
+    try {
+      await saveSession({ token: nextToken || token, user: updatedUser });
+    } catch (error) {
+      console.warn('Não foi possível salvar a sessão atualizada:', error.message);
+    }
   };
 
   const handleProfilePress = () => {
@@ -83,22 +109,53 @@ export default function App() {
       return;
     }
 
-    Alert.alert(
-      'Perfil do Usuário',
-      `Conectado como: ${user.name || user.email}\nE-mail: ${user.email}`,
-      [
-        { text: 'Fechar', style: 'cancel' },
-        { text: 'Desconectar', style: 'destructive', onPress: handleLogout },
-      ]
-    );
+    setCurrentScreen('Profile');
   };
 
   const handleStartPress = () => {
     if (user) {
-      Alert.alert('Mente Ativa', 'Suas atividades cognitivas estarão disponíveis em breve.');
+      setCurrentScreen('Games');
       return;
     }
     setCurrentScreen('Login');
+  };
+
+  const handleGamePress = (game) => {
+    if (!user) {
+      Alert.alert(
+        'Entre para jogar',
+        'Faça login para salvar seu progresso nos treinos cognitivos.',
+        [
+          { text: 'Agora não', style: 'cancel' },
+          { text: 'Entrar', onPress: () => setCurrentScreen('Login') },
+        ]
+      );
+      return;
+    }
+
+    Alert.alert(
+      game?.title || 'Jogo',
+      'Este jogo estará disponível em breve. Continue acompanhando!'
+    );
+  };
+
+  const handleNavigateTab = (tab) => {
+    if (tab === 'inicio') {
+      setCurrentScreen('Home');
+      return;
+    }
+
+    if (tab === 'jogos') {
+      setCurrentScreen('Games');
+      return;
+    }
+
+    if (tab === 'perfil') {
+      setCurrentScreen(user ? 'Profile' : 'Login');
+      return;
+    }
+
+    Alert.alert('Progresso', 'Esta seção será implementada em breve.');
   };
 
   if (restoringSession) {
@@ -140,12 +197,36 @@ export default function App() {
     );
   }
 
+  if (currentScreen === 'Profile' && user) {
+    return (
+      <ProfileScreen
+        user={user}
+        token={token}
+        onSessionUpdated={handleSessionUpdated}
+        onLogout={handleLogout}
+        onBackPress={() => setCurrentScreen('Home')}
+        onNavigateTab={handleNavigateTab}
+      />
+    );
+  }
+
+  if (currentScreen === 'Games') {
+    return (
+      <GamesScreen
+        activeTab="jogos"
+        onGamePress={handleGamePress}
+        onNavigateTab={handleNavigateTab}
+      />
+    );
+  }
+
   return (
     <HomeScreen
       userName={user?.name || 'visitante'}
       isAuthenticated={Boolean(user)}
       onStartPress={handleStartPress}
       onProfilePress={handleProfilePress}
+      onNavigateTab={handleNavigateTab}
       onNotificationPress={() =>
         Alert.alert('Notificações', 'Você não possui novas mensagens no momento.')
       }

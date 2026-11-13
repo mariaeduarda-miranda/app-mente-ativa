@@ -21,8 +21,8 @@ app-mente-ativa/
 │   └── src/                  app, rotas, controllers, middlewares
 ├── mobile/                   app Expo (React Native)
 │   └── src/
-│       ├── components/       estilos compartilhados das telas de auth
-│       ├── screens/          Home, Login e SignUp
+│       ├── components/       estilos de auth + barra de navegação inferior
+│       ├── screens/          Home, Login, SignUp, Games e Perfil
 │       └── services/         api (HTTP) e session (AsyncStorage)
 └── package.json              atalhos para rodar tudo
 ```
@@ -136,6 +136,8 @@ npx expo start -c
 | POST | `/register` | — | `{ name, email, password }` → cria conta e devolve token |
 | POST | `/login` | — | `{ email, password }` → devolve token |
 | GET | `/me` | `Bearer <token>` | Dados atualizados do usuário |
+| PUT | `/me` | `Bearer <token>` | Atualiza nome/e-mail e devolve sessão renovada |
+| PUT | `/me/password` | `Bearer <token>` | Troca a senha (senha atual + nova) |
 | POST | `/verifyToken` | token no header ou body | Valida a sessão salva no app |
 
 Resposta de sucesso (login/cadastro):

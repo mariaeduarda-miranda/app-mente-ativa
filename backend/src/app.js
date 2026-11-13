@@ -51,6 +51,13 @@ app.post(
 );
 app.post('/verifyToken', authController.verifyToken);
 app.get('/me', authenticateJWT, authController.me);
+app.put('/me', authenticateJWT, authController.updateProfile);
+app.put(
+  '/me/password',
+  authenticateJWT,
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }),
+  authController.changePassword
+);
 
 // --- 404 e tratamento centralizado de erros --------------------------------
 app.use((req, res) => {

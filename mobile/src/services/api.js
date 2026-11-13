@@ -125,6 +125,27 @@ export function getMe(token) {
   return request('/me', { token });
 }
 
+/**
+ * Atualiza nome e/ou e-mail do usuário autenticado.
+ * A API devolve uma sessão renovada (novo token + usuário atualizado).
+ */
+export function updateProfile(token, { name, email }) {
+  const body = {};
+  if (name !== undefined) body.name = String(name).trim();
+  if (email !== undefined) body.email = String(email).trim();
+
+  return request('/me', { method: 'PUT', body, token });
+}
+
+/** Troca a senha confirmando a senha atual. */
+export function changePassword(token, { currentPassword, newPassword }) {
+  return request('/me/password', {
+    method: 'PUT',
+    body: { currentPassword, newPassword },
+    token,
+  });
+}
+
 /** Diagnostico rapido do backend. */
 export function health() {
   return request('/health', { timeoutMs: 5000 });
