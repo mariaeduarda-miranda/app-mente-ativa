@@ -7,6 +7,10 @@ import LoginScreen from './src/screens/LoginScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import GamesScreen from './src/screens/GamesScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import SequenceGameScreen from './src/screens/SequenceGameScreen';
+import MemoryGameScreen from './src/screens/MemoryGameScreen';
+import DeductionGameScreen from './src/screens/DeductionGameScreen';
+import ProgressScreen from './src/screens/ProgressScreen';
 import { loadSession, saveSession, clearSession } from './src/services/session';
 import { verifyToken } from './src/services/api';
 
@@ -19,6 +23,8 @@ import { verifyToken } from './src/services/api';
  * - Login valida as credenciais na API (Express + PostgreSQL + JWT).
  * - "Criar conta" leva a SignUpScreen.
  * - Perfil permite atualizar nome, e-mail e senha (PUT /me e /me/password).
+ * - Jogos abre a Sequência Lógica, o Jogo da Memória e a Dedução Lógica.
+ * - O Progresso mostra as partidas concluídas do usuário autenticado.
  * - Ao abrir o app, a sessao salva e revalidada no backend.
  */
 export default function App() {
@@ -133,6 +139,21 @@ export default function App() {
       return;
     }
 
+    if (game?.key === 'sequencia') {
+      setCurrentScreen('SequenceGame');
+      return;
+    }
+
+    if (game?.key === 'memoria') {
+      setCurrentScreen('MemoryGame');
+      return;
+    }
+
+    if (game?.key === 'deducao') {
+      setCurrentScreen('DeductionGame');
+      return;
+    }
+
     Alert.alert(
       game?.title || 'Jogo',
       'Este jogo estará disponível em breve. Continue acompanhando!'
@@ -155,7 +176,7 @@ export default function App() {
       return;
     }
 
-    Alert.alert('Progresso', 'Esta seção será implementada em breve.');
+    setCurrentScreen(user ? 'Progress' : 'Login');
   };
 
   if (restoringSession) {
@@ -205,6 +226,34 @@ export default function App() {
         onSessionUpdated={handleSessionUpdated}
         onLogout={handleLogout}
         onBackPress={() => setCurrentScreen('Home')}
+        onNavigateTab={handleNavigateTab}
+      />
+    );
+  }
+
+  if (currentScreen === 'SequenceGame' && user) {
+    return (
+      <SequenceGameScreen token={token} onBack={() => setCurrentScreen('Games')} />
+    );
+  }
+
+  if (currentScreen === 'MemoryGame' && user) {
+    return (
+      <MemoryGameScreen token={token} onBack={() => setCurrentScreen('Games')} />
+    );
+  }
+
+  if (currentScreen === 'DeductionGame' && user) {
+    return (
+      <DeductionGameScreen token={token} onBack={() => setCurrentScreen('Games')} />
+    );
+  }
+
+  if (currentScreen === 'Progress' && user) {
+    return (
+      <ProgressScreen
+        token={token}
+        user={user}
         onNavigateTab={handleNavigateTab}
       />
     );

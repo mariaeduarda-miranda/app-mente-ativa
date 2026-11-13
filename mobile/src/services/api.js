@@ -150,3 +150,26 @@ export function changePassword(token, { currentPassword, newPassword }) {
 export function health() {
   return request('/health', { timeoutMs: 5000 });
 }
+
+/** Progresso agregado do usuário autenticado (partidas e acertos por jogo). */
+export function getProgress(token) {
+  return request('/progress', { token });
+}
+
+/** Registra uma partida concluída para o progresso do usuário. */
+export function saveGameSession(
+  token,
+  { gameKey, totalQuestions, correctAnswers, durationSeconds, startedAt }
+) {
+  return request('/progress/sessions', {
+    method: 'POST',
+    body: {
+      gameKey,
+      totalQuestions,
+      correctAnswers,
+      durationSeconds,
+      startedAt,
+    },
+    token,
+  });
+}

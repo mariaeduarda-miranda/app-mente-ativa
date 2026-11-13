@@ -5,18 +5,26 @@ const config = require('../src/config');
 const { pool, query } = require('../src/db');
 
 /**
- * Aplica o schema (sql/001_init.sql) de forma idempotente e cria o usuario
- * de teste definido no .env (SEED_USER_*).
+ * Aplica todos os schemas de sql/ (em ordem alfabetica) de forma idempotente
+ * e cria o usuario de teste definido no .env (SEED_USER_*).
  *
  * Uso: npm run db:setup
  */
 async function main() {
-  const schemaPath = path.resolve(__dirname, '..', 'sql', '001_init.sql');
-  const schema = fs.readFileSync(schemaPath, 'utf8');
+  const sqlDir = path.resolve(__dirname, '..', 'sql');
+  const schemaFiles = fs
+    .readdirSync(sqlDir)
+    .filter((file) => file.toLowerCase().endsWith('.sql'))
+    .sort();
 
-  console.log('[db:setup] Aplicando schema...');
-  await query(schema);
-  console.log('[db:setup] Schema aplicado com sucesso.');
+  for (const file of schemaFiles) {
+    const schemaPath = path.join(sqlDir, file);
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+
+    console.log(`[db:setup] Aplicando ${file}...`);
+    await query(schema);
+    console.log(`[db:setup] ${file} aplicado com sucesso.`);
+  }
 
   const email = config.seed.email.trim().toLowerCase();
   const existing = await query('SELECT id FROM users WHERE lower(email) = lower($1)', [email]);

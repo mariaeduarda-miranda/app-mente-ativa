@@ -112,6 +112,60 @@ async function main() {
   const verify = await request('POST', '/verifyToken', { token });
   record('POST /verifyToken valida o token (200)', verify.status === 200 && verify.data?.valid === true, `status ${verify.status}`);
 
+  const progressWithoutToken = await request('GET', '/progress');
+  record('GET /progress sem token e bloqueado (401)', progressWithoutToken.status === 401, `status ${progressWithoutToken.status}`);
+
+  const emptyProgress = await request('GET', '/progress', { token });
+  record(
+    'GET /progress inicia zerado com os 3 jogos (200)',
+    emptyProgress.status === 200 &&
+      emptyProgress.data?.summary?.totalSessions === 0 &&
+      emptyProgress.data?.games?.length === 3,
+    `status ${emptyProgress.status}`
+  );
+
+  const invalidSession = await request('POST', '/progress/sessions', {
+    token,
+    body: { gameKey: 'sequencia', totalQuestions: 10, correctAnswers: 11 },
+  });
+  record(
+    'POST /progress/sessions recusa acertos > total (400)',
+    invalidSession.status === 400,
+    `status ${invalidSession.status}`
+  );
+
+  const invalidGame = await request('POST', '/progress/sessions', {
+    token,
+    body: { gameKey: 'jogo-inexistente', totalQuestions: 10, correctAnswers: 5 },
+  });
+  record(
+    'POST /progress/sessions recusa jogo desconhecido (400)',
+    invalidGame.status === 400,
+    `status ${invalidGame.status}`
+  );
+
+  const session = await request('POST', '/progress/sessions', {
+    token,
+    body: { gameKey: 'sequencia', totalQuestions: 10, correctAnswers: 8, durationSeconds: 95 },
+  });
+  record(
+    'POST /progress/sessions registra a partida (201)',
+    session.status === 201 && session.data?.session?.correctAnswers === 8,
+    `status ${session.status}`
+  );
+
+  const progress = await request('GET', '/progress', { token });
+  const sequenceGame = progress.data?.games?.find((game) => game.key === 'sequencia');
+  record(
+    'GET /progress agrega partidas e acertos (200)',
+    progress.status === 200 &&
+      progress.data?.summary?.totalSessions === 1 &&
+      progress.data?.summary?.overallAccuracy === 80 &&
+      sequenceGame?.sessions === 1 &&
+      sequenceGame?.accuracy === 80,
+    `status ${progress.status}`
+  );
+
   await query('DELETE FROM users WHERE lower(email) = lower($1)', [runEmail]);
   console.log('\nUsuario de teste removido do banco.');
 
