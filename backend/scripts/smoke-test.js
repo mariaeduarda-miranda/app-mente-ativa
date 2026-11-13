@@ -49,6 +49,36 @@ async function request(method, path, { body, token } = {}) {
   }
 }
 
+/** Envia um multipart de exemplo para testar a troca de foto de perfil. */
+async function uploadAvatarRequest(token, buffer) {
+  const formData = new FormData();
+  formData.append('avatar', new Blob([buffer], { type: 'image/png' }), 'avatar-smoke.png');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+
+  try {
+    const response = await fetch(`${API_URL}/me/avatar`, {
+      method: 'PUT',
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+      body: formData,
+      signal: controller.signal,
+    });
+
+    const text = await response.text();
+    let data = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = { raw: text };
+    }
+
+    return { status: response.status, data };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function main() {
   console.log(`\nAPI: ${API_URL}\n`);
 
@@ -108,6 +138,63 @@ async function main() {
 
   const meWithBadToken = await request('GET', '/me', { token: 'token.invalido.aqui' });
   record('GET /me com token invalido e bloqueado (401)', meWithBadToken.status === 401, `status ${meWithBadToken.status}`);
+
+  // --- Foto de perfil -------------------------------------------------------
+  // PNG 1x1 valido: o sharp amplia/recorta e converte para WebP.
+  const tinyPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+
+  const avatarWithoutToken = await uploadAvatarRequest('', tinyPng);
+  record(
+    'PUT /me/avatar sem token e bloqueado (401)',
+    avatarWithoutToken.status === 401,
+    `status ${avatarWithoutToken.status}`
+  );
+
+  const avatarUpload = await uploadAvatarRequest(token, tinyPng);
+  const avatarUrl = avatarUpload.data?.user?.avatarUrl;
+  record(
+    'PUT /me/avatar salva a foto e devolve avatarUrl (200)',
+    avatarUpload.status === 200 && Boolean(avatarUrl) && avatarUrl.startsWith('/uploads/avatars/'),
+    `status ${avatarUpload.status}`
+  );
+
+  if (avatarUrl) {
+    const avatarImage = await fetch(`${API_URL}${avatarUrl}`);
+    const avatarBytes = await avatarImage.arrayBuffer();
+    record(
+      'GET /uploads entrega a foto otimizada em WebP',
+      avatarImage.status === 200 &&
+        String(avatarImage.headers.get('content-type')).includes('image/webp') &&
+        avatarBytes.byteLength > 0,
+      `status ${avatarImage.status}, ${avatarBytes.byteLength} bytes`
+    );
+  }
+
+  const meAfterAvatar = await request('GET', '/me', { token });
+  record(
+    'GET /me devolve a foto atualizada (200)',
+    meAfterAvatar.status === 200 && meAfterAvatar.data?.user?.avatarUrl === avatarUrl,
+    `status ${meAfterAvatar.status}`
+  );
+
+  const avatarRemoved = await request('DELETE', '/me/avatar', { token });
+  record(
+    'DELETE /me/avatar remove a foto (200)',
+    avatarRemoved.status === 200 && avatarRemoved.data?.user?.avatarUrl === null,
+    `status ${avatarRemoved.status}`
+  );
+
+  if (avatarUrl) {
+    const removedImage = await fetch(`${API_URL}${avatarUrl}`);
+    record(
+      'Arquivo antigo deixa de ser servido apos a remocao (404)',
+      removedImage.status === 404,
+      `status ${removedImage.status}`
+    );
+  }
 
   const verify = await request('POST', '/verifyToken', { token });
   record('POST /verifyToken valida o token (200)', verify.status === 200 && verify.data?.valid === true, `status ${verify.status}`);

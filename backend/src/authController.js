@@ -35,6 +35,7 @@ function toPublicUser(row) {
     uid: row.id,
     name: row.name,
     email: row.email,
+    avatarUrl: row.avatar_path ? `/uploads/${row.avatar_path}` : null,
     createdAt: row.created_at,
   };
 }
@@ -70,7 +71,7 @@ async function register(req, res) {
     `INSERT INTO users (name, email, password_hash)
      VALUES ($1, $2, $3)
      ON CONFLICT (lower(email)) DO NOTHING
-     RETURNING id, name, email, is_active, created_at, updated_at`,
+     RETURNING id, name, email, is_active, avatar_path, created_at, updated_at`,
     [String(name).trim(), normalizeEmail(email), passwordHash]
   );
 
@@ -95,7 +96,7 @@ async function login(req, res) {
   }
 
   const { rows } = await query(
-    `SELECT id, name, email, password_hash, is_active, created_at, updated_at
+    `SELECT id, name, email, password_hash, is_active, avatar_path, created_at, updated_at
        FROM users
       WHERE lower(email) = lower($1)
       LIMIT 1`,
@@ -126,7 +127,7 @@ async function login(req, res) {
  */
 async function me(req, res) {
   const { rows } = await query(
-    `SELECT id, name, email, is_active, created_at, updated_at
+    `SELECT id, name, email, is_active, avatar_path, created_at, updated_at
        FROM users
       WHERE id = $1
       LIMIT 1`,
@@ -163,7 +164,7 @@ async function updateProfile(req, res) {
           SET name = COALESCE($1, name),
               email = COALESCE($2, email)
         WHERE id = $3
-        RETURNING id, name, email, is_active, created_at, updated_at`,
+        RETURNING id, name, email, is_active, avatar_path, created_at, updated_at`,
       [nextName, nextEmail, req.user.id]
     );
 
@@ -251,7 +252,7 @@ async function verifyToken(req, res) {
   try {
     const decoded = jwt.verify(token, config.jwtSecret, { issuer: config.jwtIssuer });
     const { rows } = await query(
-      `SELECT id, name, email, is_active, created_at, updated_at
+      `SELECT id, name, email, is_active, avatar_path, created_at, updated_at
          FROM users
         WHERE id = $1
         LIMIT 1`,

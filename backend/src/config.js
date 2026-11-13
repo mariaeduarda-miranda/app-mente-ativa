@@ -35,6 +35,11 @@ const config = {
   jwtIssuer: 'mente-ativa-api',
   corsOrigin: (process.env.CORS_ORIGIN || '*').trim(),
   bcryptRounds: Number.parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
+  // Fotos de perfil: arquivos otimizados em disco, apenas o caminho vai ao banco.
+  uploadsDir: path.resolve(__dirname, '..', process.env.UPLOADS_DIR || 'uploads'),
+  avatarMaxBytes: Number.parseInt(process.env.AVATAR_MAX_BYTES || '5242880', 10),
+  avatarDimension: Number.parseInt(process.env.AVATAR_DIMENSION || '512', 10),
+  avatarQuality: Number.parseInt(process.env.AVATAR_QUALITY || '82', 10),
   seed: {
     name: process.env.SEED_USER_NAME || 'Usuario Teste',
     email: process.env.SEED_USER_EMAIL || 'teste@menteativa.com',

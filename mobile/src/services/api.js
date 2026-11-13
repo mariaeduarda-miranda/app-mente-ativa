@@ -34,6 +34,16 @@ const rawBaseUrl =
 export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
 
 /**
+ * Converte caminhos relativos devolvidos pela API (ex.: /uploads/avatars/x.webp)
+ * em URLs absolutas acessiveis pelo celular.
+ */
+export function resolveAssetUrl(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
+/**
  * Erro padronizado da API.
  * `status === 0` indica falha de rede (servidor offline, IP errado, firewall).
  */
@@ -46,12 +56,15 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, { method = 'GET', body, token, timeoutMs = 15000 } = {}) {
+async function request(
+  path,
+  { method = 'GET', body, formData, token, timeoutMs = 15000 } = {}
+) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   const headers = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (body !== undefined && !formData) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let response;
@@ -59,7 +72,9 @@ async function request(path, { method = 'GET', body, token, timeoutMs = 15000 } 
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      // Em React Native o proprio fetch define o Content-Type do multipart
+      // (com o boundary correto), por isso nao enviamos esse header manualmente.
+      body: formData || (body === undefined ? undefined : JSON.stringify(body)),
       signal: controller.signal,
     });
   } catch (error) {
@@ -144,6 +159,48 @@ export function changePassword(token, { currentPassword, newPassword }) {
     body: { currentPassword, newPassword },
     token,
   });
+}
+
+function guessImageMimeType(uri) {
+  const extension = String(uri || '').split('.').pop()?.toLowerCase();
+  if (extension === 'png') return 'image/png';
+  if (extension === 'webp') return 'image/webp';
+  return 'image/jpeg';
+}
+
+/**
+ * Envia a foto de perfil escolhida no app (multipart/form-data).
+ * A API otimiza a imagem e devolve o usuario atualizado em { user }.
+ */
+export function uploadAvatar(token, asset) {
+  if (!asset?.uri) {
+    return Promise.reject(
+      new ApiError('Selecione uma imagem para enviar.', { status: 400 })
+    );
+  }
+
+  const formData = new FormData();
+  const type = asset.mimeType || guessImageMimeType(asset.uri);
+  const name = asset.fileName || `avatar.${type === 'image/png' ? 'png' : 'jpg'}`;
+
+  if (asset.file) {
+    // Expo web entrega um File nativo.
+    formData.append('avatar', asset.file, name);
+  } else {
+    formData.append('avatar', { uri: asset.uri, name, type });
+  }
+
+  return request('/me/avatar', {
+    method: 'PUT',
+    formData,
+    token,
+    timeoutMs: 30000,
+  });
+}
+
+/** Remove a foto atual e volta ao avatar padrao. */
+export function removeAvatar(token) {
+  return request('/me/avatar', { method: 'DELETE', token });
 }
 
 /** Diagnostico rapido do backend. */

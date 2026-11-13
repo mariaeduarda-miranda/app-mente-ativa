@@ -21,6 +21,7 @@ import BottomNavigation from '../components/BottomNavigation';
  *
  * @param {Object} props
  * @param {string} [props.userName='visitante'] - Nome para a saudação
+ * @param {string|null} [props.profileImageUrl] - Foto de perfil do usuário
  * @param {boolean} [props.isAuthenticated=false] - Indica se há sessão ativa
  * @param {Function} [props.onStartPress] - Ação ao clicar em 'Entrar e começar'
  * @param {Function} [props.onNotificationPress] - Ação para o ícone de notificações
@@ -29,6 +30,7 @@ import BottomNavigation from '../components/BottomNavigation';
  */
 export default function HomeScreen({
   userName = 'visitante',
+  profileImageUrl = null,
   isAuthenticated = false,
   onStartPress,
   onNotificationPress,
@@ -86,7 +88,11 @@ export default function HomeScreen({
             accessibilityRole="button"
           >
             <ProfileCircle>
-              <Ionicons name="person" size={17} color="#ffffff" />
+              {profileImageUrl ? (
+                <ProfileImage source={{ uri: profileImageUrl }} resizeMode="cover" />
+              ) : (
+                <Ionicons name="person" size={17} color="#ffffff" />
+              )}
             </ProfileCircle>
           </ProfileButton>
         </HeaderRight>
@@ -275,6 +281,15 @@ export const ProfileCircle = styled.View`
   background-color: #0f4c5c;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+`;
+
+/**
+ * Foto de perfil exibida no lugar do ícone padrão.
+ */
+export const ProfileImage = styled.Image`
+  width: 100%;
+  height: 100%;
 `;
 
 // --------------------------------------------------------

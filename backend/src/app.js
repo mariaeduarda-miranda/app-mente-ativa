@@ -3,6 +3,7 @@ const cors = require('cors');
 const config = require('./config');
 const { pool } = require('./db');
 const authController = require('./authController');
+const avatarController = require('./avatarController');
 const progressController = require('./progressController');
 const { authenticateJWT } = require('./authMiddleware');
 const { rateLimit } = require('./rateLimit');
@@ -24,6 +25,22 @@ app.use(
   })
 );
 app.use(express.json({ limit: '100kb' }));
+
+// Fotos de perfil: servidas como estaticas com cache imutavel. Cada troca de
+// imagem gera um nome novo, entao o cache do celular nunca fica desatualizado.
+app.use(
+  '/uploads',
+  express.static(config.uploadsDir, {
+    maxAge: '365d',
+    immutable: true,
+    index: false,
+    fallthrough: true,
+    setHeaders: (res) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    },
+  })
+);
 
 // --- Healthcheck (usado pelo smoke test e para diagnostico) -----------------
 app.get('/health', async (req, res) => {
@@ -60,6 +77,21 @@ app.put(
   authController.changePassword
 );
 
+// --- Foto de perfil ---------------------------------------------------------
+app.put(
+  '/me/avatar',
+  authenticateJWT,
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }),
+  avatarController.uploadAvatarImage,
+  avatarController.updateAvatar
+);
+app.delete(
+  '/me/avatar',
+  authenticateJWT,
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }),
+  avatarController.removeAvatar
+);
+
 // --- Progresso dos jogos ----------------------------------------------------
 app.post('/progress/sessions', authenticateJWT, progressController.createSession);
 app.get('/progress', authenticateJWT, progressController.summary);
@@ -70,6 +102,21 @@ app.use((req, res) => {
 });
 
 app.use((error, req, res, next) => {
+  if (error?.name === 'MulterError') {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      const maxMb = Math.round((config.avatarMaxBytes / 1024 / 1024) * 10) / 10;
+      return res.status(413).json({
+        error: `A imagem deve ter no máximo ${maxMb} MB.`,
+      });
+    }
+
+    return res.status(400).json({ error: 'Não foi possível receber a imagem enviada.' });
+  }
+
+  if (error?.status >= 400 && error.status < 500) {
+    return res.status(error.status).json({ error: error.message });
+  }
+
   if (error?.type === 'entity.parse.failed') {
     return res.status(400).json({ error: 'Corpo da requisição não é um JSON válido.' });
   }

@@ -12,7 +12,7 @@ import MemoryGameScreen from './src/screens/MemoryGameScreen';
 import DeductionGameScreen from './src/screens/DeductionGameScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import { loadSession, saveSession, clearSession } from './src/services/session';
-import { verifyToken } from './src/services/api';
+import { verifyToken, resolveAssetUrl } from './src/services/api';
 
 /**
  * Componente principal (App.js)
@@ -272,6 +272,7 @@ export default function App() {
   return (
     <HomeScreen
       userName={user?.name || 'visitante'}
+      profileImageUrl={resolveAssetUrl(user?.avatarUrl)}
       isAuthenticated={Boolean(user)}
       onStartPress={handleStartPress}
       onProfilePress={handleProfilePress}

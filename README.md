@@ -16,8 +16,9 @@ app-mente-ativa/
 ├── backend/                  API Express
 │   ├── docker-compose.yml    PostgreSQL 17 + pgAdmin (Docker)
 │   ├── pgadmin/servers.json  servidor já cadastrado no pgAdmin
-│   ├── sql/                  schemas (users, game_sessions)
+│   ├── sql/                  schemas (users, game_sessions, avatar)
 │   ├── scripts/              db-setup e smoke test
+│   ├── uploads/              fotos de perfil otimizadas (gerado em runtime)
 │   └── src/                  app, rotas, controllers, middlewares
 ├── mobile/                   app Expo (React Native)
 │   └── src/
@@ -154,6 +155,9 @@ média de acertos por jogo.
 | GET | `/me` | `Bearer <token>` | Dados atualizados do usuário |
 | PUT | `/me` | `Bearer <token>` | Atualiza nome/e-mail e devolve sessão renovada |
 | PUT | `/me/password` | `Bearer <token>` | Troca a senha (senha atual + nova) |
+| PUT | `/me/avatar` | `Bearer <token>` | Upload da foto de perfil (`multipart/form-data`, campo `avatar`) |
+| DELETE | `/me/avatar` | `Bearer <token>` | Remove a foto e volta ao avatar padrão |
+| GET | `/uploads/...` | — | Serve a foto otimizada com cache imutável |
 | POST | `/progress/sessions` | `Bearer <token>` | Registra uma partida concluída |
 | GET | `/progress` | `Bearer <token>` | Resumo do progresso do usuário |
 | POST | `/verifyToken` | token no header ou body | Valida a sessão salva no app |
@@ -164,7 +168,7 @@ Resposta de sucesso (login/cadastro):
 {
   "token": "<jwt>",
   "expiresIn": "7d",
-  "user": { "id": "...", "uid": "...", "name": "...", "email": "...", "createdAt": "..." }
+  "user": { "id": "...", "uid": "...", "name": "...", "email": "...", "avatarUrl": null, "createdAt": "..." }
 }
 ```
 
@@ -196,6 +200,7 @@ Tabela `users` (`backend/sql/001_init.sql`):
 | `name` | TEXT | 2 a 120 caracteres |
 | `email` | TEXT | único via índice em `lower(email)` |
 | `password_hash` | TEXT | bcrypt (custo 12) |
+| `avatar_path` | TEXT | caminho relativo da foto em `uploads/` (`NULL` = avatar padrão) |
 | `is_active` | BOOLEAN | contas desativadas perdem acesso |
 | `created_at` / `updated_at` | TIMESTAMPTZ | `updated_at` via trigger |
 
@@ -217,6 +222,22 @@ O progresso é agregado no banco: `GET /progress` conta as partidas e calcula o
 percentual de acertos por jogo (`sum(correct_answers) / sum(total_questions)`).
 O `db:setup` aplica todos os arquivos de `backend/sql/` em ordem alfabética,
 então novas migrações basta serem adicionadas nessa pasta.
+
+### Fotos de perfil (`003_user_avatar.sql`)
+
+O upload passa pela API (`PUT /me/avatar`), é validado e otimizado com `sharp`:
+a imagem vira **512×512 WebP** (qualidade 82, tipicamente 30–60 KB) e é gravada
+em `backend/uploads/avatars/`. O banco guarda apenas `avatar_path`; a imagem é
+servida por `/uploads` com `Cache-Control` imutável de 1 ano. Como cada troca
+gera um nome de arquivo novo, o celular nunca exibe uma foto antiga em cache.
+
+Limites e ajustes ficam no `.env` (`UPLOADS_DIR`, `AVATAR_MAX_BYTES` — padrão
+5 MB —, `AVATAR_DIMENSION` e `AVATAR_QUALITY`). Formatos aceitos: JPG, PNG e
+WebP. Ao trocar/remover a foto, o arquivo anterior é apagado automaticamente.
+
+> A pasta `backend/uploads/` é ignorada pelo Git. Ao publicar a API em um
+> container, monte um volume persistente nela (ou troque por um storage externo
+> mantendo o mesmo `avatar_path`).
 
 Inspecionar o banco:
 
@@ -249,6 +270,9 @@ nada; apenas `npm run db:reset` (`down -v`) recria tudo do zero.
 - `401` genérico para credenciais inválidas (não revela se o e-mail existe).
 - Rate limit de 10 tentativas de login por 15 minutos por IP + e-mail.
 - CORS configurável por `CORS_ORIGIN`.
+- Fotos de perfil: apenas JPG/PNG/WebP até 5 MB; o nome do arquivo é gerado no
+  servidor, a imagem é reprocessada (sem payload malicioso) e servida como
+  estático com `X-Content-Type-Options: nosniff`.
 
 ## Solução de problemas
 

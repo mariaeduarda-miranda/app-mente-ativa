@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
-import { StatusBar, Platform, Alert, ActivityIndicator } from 'react-native';
+import { StatusBar, Platform, Alert, ActivityIndicator, Linking } from 'react-native';
 import styled from 'styled-components/native';
 import { Feather } from '@expo/vector-icons';
-import { updateProfile, changePassword } from '../services/api';
+import * as ImagePicker from 'expo-image-picker';
+import {
+  updateProfile,
+  changePassword,
+  uploadAvatar,
+  removeAvatar,
+  resolveAssetUrl,
+} from '../services/api';
 import {
   FieldGroup,
   FieldLabel,
@@ -71,8 +78,12 @@ export default function ProfileScreen({
   const [showPasswords, setShowPasswords] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [removingAvatar, setRemovingAvatar] = useState(false);
 
   const memberSince = formatMemberSince(user?.createdAt);
+  const avatarUri = resolveAssetUrl(user?.avatarUrl);
+  const avatarBusy = uploadingAvatar || removingAvatar;
 
   const handleSaveProfile = async () => {
     const trimmedName = name.trim();
@@ -158,6 +169,93 @@ export default function ProfileScreen({
     }
   };
 
+  const handlePickAvatar = async () => {
+    if (avatarBusy) return;
+
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        if (!permission.canAskAgain) {
+          Alert.alert(
+            'Permissão necessária',
+            'Para trocar a foto, libere o acesso à galeria nas configurações do aparelho.',
+            [
+              { text: 'Agora não', style: 'cancel' },
+              { text: 'Abrir ajustes', onPress: () => Linking.openSettings() },
+            ]
+          );
+          return;
+        }
+
+        Alert.alert(
+          'Permissão necessária',
+          'Precisamos do acesso à galeria para você escolher uma foto de perfil.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        exif: false,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      setUploadingAvatar(true);
+      const data = await uploadAvatar(token, result.assets[0]);
+
+      if (!data?.user) {
+        throw new Error('O servidor não retornou os dados atualizados.');
+      }
+
+      await onSessionUpdated?.({ user: data.user });
+      Alert.alert('Foto atualizada', 'Sua foto de perfil foi alterada com sucesso.');
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível atualizar a foto',
+        error.message || 'Escolha outra imagem e tente novamente.'
+      );
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    if (avatarBusy || !avatarUri) return;
+
+    Alert.alert('Remover foto', 'Deseja voltar para o avatar padrão?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setRemovingAvatar(true);
+            const data = await removeAvatar(token);
+
+            if (!data?.user) {
+              throw new Error('O servidor não retornou os dados atualizados.');
+            }
+
+            await onSessionUpdated?.({ user: data.user });
+            Alert.alert('Foto removida', 'Voltamos para o avatar padrão.');
+          } catch (error) {
+            Alert.alert(
+              'Não foi possível remover a foto',
+              error.message || 'Tente novamente em instantes.'
+            );
+          } finally {
+            setRemovingAvatar(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const handleLogout = () => {
     Alert.alert('Sair da conta', 'Deseja realmente desconectar?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -185,9 +283,46 @@ export default function ProfileScreen({
 
           {/* Dados resumidos da conta */}
           <HeroCard>
-            <Avatar>
-              <Feather name="user" size={34} color="#ffffff" />
-            </Avatar>
+            <AvatarButton
+              onPress={handlePickAvatar}
+              disabled={avatarBusy}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Alterar foto de perfil"
+            >
+              <Avatar>
+                {avatarUri ? (
+                  <AvatarImage source={{ uri: avatarUri }} resizeMode="cover" />
+                ) : (
+                  <Feather name="user" size={40} color="#ffffff" />
+                )}
+              </Avatar>
+              <AvatarBadge>
+                {uploadingAvatar ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <Feather name="camera" size={15} color="#ffffff" />
+                )}
+              </AvatarBadge>
+            </AvatarButton>
+
+            {avatarUri ? (
+              <RemoveAvatarButton
+                onPress={handleRemoveAvatar}
+                disabled={avatarBusy}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Remover foto de perfil"
+              >
+                <Feather name="trash-2" size={13} color="#8a5a55" />
+                <RemoveAvatarText>
+                  {removingAvatar ? 'Removendo...' : 'Remover foto'}
+                </RemoveAvatarText>
+              </RemoveAvatarButton>
+            ) : (
+              <AvatarHint>Toque na foto para escolher uma imagem</AvatarHint>
+            )}
+
             <HeroName>{user?.name || 'Usuário'}</HeroName>
             <HeroEmail>{user?.email || ''}</HeroEmail>
             {memberSince && (
@@ -439,14 +574,62 @@ const HeroCard = styled.View`
     `}
 `;
 
+const AvatarButton = styled.TouchableOpacity`
+  position: relative;
+  margin-bottom: 8px;
+`;
+
 const Avatar = styled.View`
-  width: 74px;
-  height: 74px;
-  border-radius: 37px;
+  width: 92px;
+  height: 92px;
+  border-radius: 46px;
   background-color: #0f4c5c;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  border-width: 3px;
+  border-color: #e3eff4;
+`;
+
+const AvatarImage = styled.Image`
+  width: 100%;
+  height: 100%;
+`;
+
+const AvatarBadge = styled.View`
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  background-color: #2f6b53;
+  border-width: 2.5px;
+  border-color: #ffffff;
+  align-items: center;
+  justify-content: center;
+`;
+
+const AvatarHint = styled.Text`
+  font-size: 12.5px;
+  color: #7b8794;
+  margin-top: 2px;
   margin-bottom: 12px;
+`;
+
+const RemoveAvatarButton = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  padding: 4px 8px;
+  margin-top: 2px;
+  margin-bottom: 10px;
+`;
+
+const RemoveAvatarText = styled.Text`
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #8a5a55;
+  margin-left: 4px;
 `;
 
 const HeroName = styled.Text`
