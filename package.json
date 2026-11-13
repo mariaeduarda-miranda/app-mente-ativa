@@ -1,0 +1,17 @@
+{
+  "name": "app-mente-ativa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mente Ativa - app mobile (Expo) + API (Express + PostgreSQL)",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix mobile install",
+    "db:up": "npm --prefix backend run db:up",
+    "db:down": "npm --prefix backend run db:down",
+    "db:ps": "npm --prefix backend run db:ps",
+    "db:setup": "npm --prefix backend run db:setup",
+    "db:reset": "npm --prefix backend run db:reset",
+    "api": "npm --prefix backend run dev",
+    "mobile": "npm --prefix mobile start",
+    "smoke": "npm --prefix backend run smoke"
+  }
+}

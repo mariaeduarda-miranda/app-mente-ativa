@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Mente Ativa",
+    "slug": "mente-ativa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#f3f8fa",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "backgroundColor": "#f3f8fa"
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-font"
+    ]
+  }
+}

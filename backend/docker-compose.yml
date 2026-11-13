@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: mente-ativa-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mente_ativa
+      POSTGRES_PASSWORD: mente_ativa_dev
+      POSTGRES_DB: mente_ativa
+    ports:
+      - "5432:5432"
+    volumes:
+      - mente_ativa_pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mente_ativa -d mente_ativa"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Interface web para inspecionar o banco (http://localhost:5050).
+  # Sobe junto com o "docker compose up" e ja vem com o servidor
+  # "Mente Ativa (Docker)" pre-cadastrado (ver pgadmin/servers.json).
+  pgadmin:
+    image: dpage/pgadmin4:9
+    container_name: mente-ativa-pgadmin
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@menteativa.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-MenteAtiva@2026}
+      PGADMIN_LISTEN_PORT: 80
+      # Sem "master password" extra: o login ja e feito com as credenciais acima.
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - mente_ativa_pgadmin:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:80/misc/ping', timeout=5)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  mente_ativa_pgdata:
+  mente_ativa_pgadmin:
