@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { File } from 'expo-file-system';
 
 /**
  * Configuracao da API do Mente Ativa.
@@ -87,7 +88,8 @@ async function request(
 
     throw new ApiError(
       `Não foi possível conectar à API em ${API_BASE_URL}. ` +
-        'Verifique se o backend está rodando e se o celular está na mesma rede.',
+        'Verifique se o backend está rodando e se o celular está na mesma rede.' +
+        (error?.message ? ` (${error.message})` : ''),
       { status: 0 }
     );
   } finally {
@@ -161,16 +163,14 @@ export function changePassword(token, { currentPassword, newPassword }) {
   });
 }
 
-function guessImageMimeType(uri) {
-  const extension = String(uri || '').split('.').pop()?.toLowerCase();
-  if (extension === 'png') return 'image/png';
-  if (extension === 'webp') return 'image/webp';
-  return 'image/jpeg';
-}
-
 /**
  * Envia a foto de perfil escolhida no app (multipart/form-data).
  * A API otimiza a imagem e devolve o usuario atualizado em { user }.
+ *
+ * No nativo o `fetch` global e o `expo/fetch`, que nao aceita o formato
+ * proprietario do React Native `{ uri, name, type }` em FormData. Por isso
+ * enviamos um `File` do expo-file-system, que expoe bytes() e e suportado
+ * pelo `expo/fetch`.
  */
 export function uploadAvatar(token, asset) {
   if (!asset?.uri) {
@@ -180,14 +180,13 @@ export function uploadAvatar(token, asset) {
   }
 
   const formData = new FormData();
-  const type = asset.mimeType || guessImageMimeType(asset.uri);
-  const name = asset.fileName || `avatar.${type === 'image/png' ? 'png' : 'jpg'}`;
+  const name = asset.fileName || asset.file?.name || 'avatar.jpg';
 
-  if (asset.file) {
+  if (Platform.OS === 'web' && asset.file) {
     // Expo web entrega um File nativo.
     formData.append('avatar', asset.file, name);
   } else {
-    formData.append('avatar', { uri: asset.uri, name, type });
+    formData.append('avatar', new File(asset.uri), name);
   }
 
   return request('/me/avatar', {
