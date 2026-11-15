@@ -42,6 +42,31 @@ app.use(
   })
 );
 
+// --- Raiz: lista as rotas disponiveis --------------------------------------
+// Sem isso, abrir http://localhost:3000 no navegador devolvia 404, o que
+// confundia quem estava testando a API.
+app.get('/', (req, res) => {
+  return res.status(200).json({
+    name: 'Mente Ativa API',
+    status: 'ok',
+    version: '1.0.0',
+    docs: 'Todas as rotas de escrita exigem JSON e retornam JSON.',
+    endpoints: [
+      { method: 'GET', path: '/health', description: 'Status da API e do banco' },
+      { method: 'POST', path: '/register', description: 'Cria conta { name, email, password }' },
+      { method: 'POST', path: '/login', description: 'Autentica { email, password }' },
+      { method: 'GET', path: '/me', description: 'Dados do usuario (Bearer token)' },
+      { method: 'PUT', path: '/me', description: 'Atualiza nome/e-mail (Bearer token)' },
+      { method: 'PUT', path: '/me/password', description: 'Troca a senha (Bearer token)' },
+      { method: 'PUT', path: '/me/avatar', description: 'Envia foto de perfil (multipart)' },
+      { method: 'DELETE', path: '/me/avatar', description: 'Remove a foto de perfil' },
+      { method: 'POST', path: '/progress/sessions', description: 'Grava uma sessao de jogo' },
+      { method: 'GET', path: '/progress', description: 'Resumo do progresso do usuario' },
+      { method: 'POST', path: '/verifyToken', description: 'Valida um token JWT' },
+    ],
+  });
+});
+
 // --- Healthcheck (usado pelo smoke test e para diagnostico) -----------------
 app.get('/health', async (req, res) => {
   try {
@@ -96,9 +121,39 @@ app.delete(
 app.post('/progress/sessions', authenticateJWT, progressController.createSession);
 app.get('/progress', authenticateJWT, progressController.summary);
 
-// --- 404 e tratamento centralizado de erros --------------------------------
+// --- 404 (rota inexistente) e 405 (metodo errado) ---------------------------
+// Ajuda quem testa a API pelo navegador: abrir /login no navegador faz um GET,
+// mas a rota so aceita POST. Antes isso retornava "Rota nao encontrada".
+const KNOWN_ROUTES = {
+  '/': ['GET'],
+  '/health': ['GET'],
+  '/register': ['POST'],
+  '/login': ['POST'],
+  '/verifyToken': ['POST'],
+  '/me': ['GET', 'PUT'],
+  '/me/password': ['PUT'],
+  '/me/avatar': ['PUT', 'DELETE'],
+  '/progress': ['GET'],
+  '/progress/sessions': ['POST'],
+};
+
 app.use((req, res) => {
-  return res.status(404).json({ error: 'Rota não encontrada.' });
+  const path = req.path.replace(/\/+$/, '') || '/';
+  const allowed = KNOWN_ROUTES[path];
+
+  if (allowed) {
+    res.set('Allow', allowed.join(', '));
+    return res.status(405).json({
+      error:
+        `O metodo ${req.method} nao e aceito em ${req.path}. ` +
+        `Use: ${allowed.join(' ou ')}.`,
+    });
+  }
+
+  return res.status(404).json({
+    error: `Rota nao encontrada: ${req.method} ${req.path}.`,
+    hint: 'Abra GET / no navegador para ver a lista de rotas.',
+  });
 });
 
 app.use((error, req, res, next) => {
