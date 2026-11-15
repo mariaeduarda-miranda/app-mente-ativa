@@ -103,6 +103,40 @@ app.put(
 );
 
 // --- Foto de perfil ---------------------------------------------------------
+// Diagnostico: registra cada tentativa de upload no terminal da API. Ajuda a
+// distinguir "a requisicao nunca chegou" de "chegou e foi recusada".
+app.use('/me/avatar', (req, res, next) => {
+  const startedAt = Date.now();
+  const bytes = Number(req.headers['content-length'] || 0);
+  const size = bytes ? `${Math.round(bytes / 1024)} KB` : 'tamanho desconhecido';
+
+  console.log(
+    `[avatar] ${req.method} iniciado por ${req.ip} (${size}, ${
+      req.headers['content-type'] || 'sem content-type'
+    })`
+  );
+
+  req.on('aborted', () => {
+    console.warn('[avatar] Cliente abortou o envio antes do fim.');
+  });
+
+  res.on('finish', () => {
+    console.log(
+      `[avatar] ${req.method} -> ${res.statusCode} em ${Date.now() - startedAt} ms`
+    );
+  });
+
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      console.warn(
+        `[avatar] Conexao encerrada antes da resposta (${Date.now() - startedAt} ms).`
+      );
+    }
+  });
+
+  next();
+});
+
 app.put(
   '/me/avatar',
   authenticateJWT,
@@ -158,6 +192,8 @@ app.use((req, res) => {
 
 app.use((error, req, res, next) => {
   if (error?.name === 'MulterError') {
+    console.warn(`[avatar] Upload recusado: ${error.code} (${error.message}).`);
+
     if (error.code === 'LIMIT_FILE_SIZE') {
       const maxMb = Math.round((config.avatarMaxBytes / 1024 / 1024) * 10) / 10;
       return res.status(413).json({

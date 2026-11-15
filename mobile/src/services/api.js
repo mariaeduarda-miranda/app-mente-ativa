@@ -161,6 +161,67 @@ export function changePassword(token, { currentPassword, newPassword }) {
   });
 }
 
+/**
+ * Envia um multipart/form-data usando XMLHttpRequest.
+ *
+ * O fetch do React Native devolve apenas "Network request failed" quando o
+ * envio de arquivo quebra (foto grande, conexao encerrada pelo servidor etc.).
+ * O XHR expoe o status HTTP e o corpo da resposta, permitindo mostrar a causa
+ * real para o usuario e facilitar o diagnostico.
+ */
+function sendMultipart({ path, formData, token, timeoutMs = 30000 }) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', `${API_BASE_URL}${path}`);
+    xhr.timeout = timeoutMs;
+    xhr.setRequestHeader('Accept', 'application/json');
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.onload = () => {
+      let data = null;
+      if (xhr.responseText) {
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          data = null;
+        }
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data ?? {});
+        return;
+      }
+
+      reject(
+        new ApiError(
+          data?.error || `Falha na requisição (HTTP ${xhr.status}).`,
+          { status: xhr.status, data }
+        )
+      );
+    };
+
+    xhr.onerror = () =>
+      reject(
+        new ApiError(
+          'A conexão caiu durante o envio da imagem. ' +
+            'Verifique a rede e tente novamente com outra foto.',
+          { status: 0 }
+        )
+      );
+    xhr.ontimeout = () =>
+      reject(
+        new ApiError(
+          'O envio da imagem demorou demais. Tente novamente com uma foto menor.',
+          { status: 0 }
+        )
+      );
+    xhr.onabort = () =>
+      reject(new ApiError('O envio da imagem foi cancelado.', { status: 0 }));
+
+    xhr.send(formData);
+  });
+}
+
 function guessImageMimeType(uri) {
   const extension = String(uri || '').split('.').pop()?.toLowerCase();
   if (extension === 'png') return 'image/png';
@@ -190,8 +251,8 @@ export function uploadAvatar(token, asset) {
     formData.append('avatar', { uri: asset.uri, name, type });
   }
 
-  return request('/me/avatar', {
-    method: 'PUT',
+  return sendMultipart({
+    path: '/me/avatar',
     formData,
     token,
     timeoutMs: 30000,

@@ -149,6 +149,7 @@ média de acertos por jogo.
 
 | Método | Rota | Autenticação | Descrição |
 |---|---|---|---|
+| GET | `/` | — | Lista todas as rotas disponíveis (abra no navegador) |
 | GET | `/health` | — | Status da API + banco |
 | POST | `/register` | — | `{ name, email, password }` → cria conta e devolve token |
 | POST | `/login` | — | `{ email, password }` → devolve token |
@@ -173,7 +174,8 @@ Resposta de sucesso (login/cadastro):
 ```
 
 Códigos de erro: `400` dados inválidos, `401` credenciais inválidas/token inválido,
-`403` conta desativada, `409` e-mail já cadastrado, `429` muitas tentativas.
+`403` conta desativada, `404` rota inexistente, `405` método errado (ex.: `GET /login`),
+`409` e-mail já cadastrado, `429` muitas tentativas.
 
 ## Scripts úteis
 
@@ -235,6 +237,15 @@ Limites e ajustes ficam no `.env` (`UPLOADS_DIR`, `AVATAR_MAX_BYTES` — padrão
 5 MB —, `AVATAR_DIMENSION` e `AVATAR_QUALITY`). Formatos aceitos: JPG, PNG e
 WebP. Ao trocar/remover a foto, o arquivo anterior é apagado automaticamente.
 
+Antes de enviar, o app reduz a foto no próprio celular (`expo-image-manipulator`)
+para no máximo 1024 px em JPEG, o que deixa o corpo do upload em torno de
+100–300 KB. Isso evita o erro de conexão que aparece quando a foto original
+passa do limite de 5 MB.
+
+> A rota `PUT /me/avatar` **não funciona pelo navegador**: ela exige método PUT,
+> token no header `Authorization` e corpo `multipart/form-data`. Abrir
+> `/me/avatar` na barra de endereços faz um GET e retorna 404/405.
+
 > A pasta `backend/uploads/` é ignorada pelo Git. Ao publicar a API em um
 > container, monte um volume persistente nela (ou troque por um storage externo
 > mantendo o mesmo `avatar_path`).
@@ -281,9 +292,13 @@ nada; apenas `npm run db:reset` (`down -v`) recria tudo do zero.
 | `docker` não é reconhecido | terminal aberto antes da instalação | feche e reabra o terminal |
 | `[db] Nao foi possivel conectar` | container parado | `npm run db:up` |
 | `porta 3000 em uso` | outra API rodando | encerre o processo ou troque `PORT` |
+| `Failed running 'server.js'` | outra instância de `npm run dev` já está usando a porta 3000 | feche o terminal duplicado ou encerre o processo da porta 3000 antes de subir de novo |
 | App não conecta no celular | IP errado/firewall | use `EXPO_PUBLIC_API_URL` e libere a porta 3000 |
 | `E-mail ou senha incorretos` com o usuário de teste | banco recriado sem seed | `npm run db:setup` |
 | `Muitas tentativas` | rate limit do login | aguarde 15 minutos |
+| `Rota nao encontrada` no navegador | você abriu a URL raiz ou uma rota POST via GET | abra `GET /` para ver as rotas; login/cadastro exigem POST (use o app, o pgAdmin ou `npm run smoke`) |
+| `Rota nao encontrada: GET /me/avatar` no navegador | `/me/avatar` só aceita PUT/DELETE com token | teste a foto pelo app; o navegador não envia upload |
+| `Não foi possível conectar à API` só ao enviar a foto | foto acima de 5 MB (o envio é abortado) ou API reiniciando | o app já compacta antes de enviar; confira o terminal da API: cada tentativa gera uma linha `[avatar] PUT iniciado...` |
 | pgAdmin pede senha do banco | primeiro acesso ao servidor | use `mente_ativa_dev` e marque **Save Password** |
 | `porta 5050 em uso` | outra instância do pgAdmin | pare a outra instância ou troque `PGADMIN_PORT` no `.env` |
 | Esqueci a senha do pgAdmin | credenciais do `.env` mudaram depois do primeiro start | `docker volume rm backend_mente_ativa_pgadmin` e `npm run db:up` |

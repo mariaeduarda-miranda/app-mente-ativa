@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar, Platform, Alert, ActivityIndicator, Linking } from 'react-native';
 import styled from 'styled-components/native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import {
   updateProfile,
   changePassword,
   uploadAvatar,
   removeAvatar,
   resolveAssetUrl,
+  health,
 } from '../services/api';
 import {
   FieldGroup,
@@ -22,6 +24,39 @@ import BottomNavigation from '../components/BottomNavigation';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MIN_PASSWORD_LENGTH = 8;
+
+// A foto e reduzida no proprio celular antes do envio: economiza dados,
+// evita estourar o limite do servidor e deixa o upload bem mais rapido.
+const AVATAR_UPLOAD_DIMENSION = 1024;
+const AVATAR_DECODE_DIMENSION = 1600;
+const AVATAR_UPLOAD_QUALITY = 0.72;
+
+/**
+ * Redimensiona/compacta a imagem escolhida e devolve um arquivo JPEG pequeno.
+ * O servidor continua otimizando para 512x512 WebP; esta etapa existe apenas
+ * para o envio nao falhar com fotos grandes (comuns em celulares).
+ */
+async function prepareAvatarForUpload(asset) {
+  const context = ImageManipulator.manipulate(asset.uri, {
+    maxWidth: AVATAR_DECODE_DIMENSION,
+    maxHeight: AVATAR_DECODE_DIMENSION,
+  });
+  context.resize({ width: AVATAR_UPLOAD_DIMENSION, height: null });
+
+  const image = await context.renderAsync();
+  const saved = await image.saveAsync({
+    compress: AVATAR_UPLOAD_QUALITY,
+    format: SaveFormat.JPEG,
+  });
+
+  return {
+    uri: saved.uri,
+    mimeType: 'image/jpeg',
+    fileName: 'avatar.jpg',
+    width: saved.width,
+    height: saved.height,
+  };
+}
 
 const MONTHS = [
   'janeiro',
@@ -80,10 +115,18 @@ export default function ProfileScreen({
   const [savingPassword, setSavingPassword] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [removingAvatar, setRemovingAvatar] = useState(false);
+  const [pendingAvatarUri, setPendingAvatarUri] = useState(null);
 
   const memberSince = formatMemberSince(user?.createdAt);
-  const avatarUri = resolveAssetUrl(user?.avatarUrl);
+  // Mostra a foto escolhida imediatamente, antes mesmo de o upload terminar.
+  // Depois que a API responde, a URL definitiva passa a ter prioridade.
+  const avatarUri = resolveAssetUrl(user?.avatarUrl) || pendingAvatarUri;
   const avatarBusy = uploadingAvatar || removingAvatar;
+
+  // Quando a URL definitiva chega da API, a prévia local já pode ser descartada.
+  useEffect(() => {
+    if (user?.avatarUrl) setPendingAvatarUri(null);
+  }, [user?.avatarUrl]);
 
   const handleSaveProfile = async () => {
     const trimmedName = name.trim();
@@ -205,8 +248,21 @@ export default function ProfileScreen({
 
       if (result.canceled || !result.assets?.length) return;
 
+      const selectedAvatar = result.assets[0];
+      setPendingAvatarUri(selectedAvatar.uri);
       setUploadingAvatar(true);
-      const data = await uploadAvatar(token, result.assets[0]);
+
+      // Compacta no aparelho antes de enviar. Se a compactacao falhar, envia o
+      // arquivo original: o servidor ainda valida formato e tamanho.
+      let uploadAsset = selectedAvatar;
+      try {
+        uploadAsset = await prepareAvatarForUpload(selectedAvatar);
+        setPendingAvatarUri(uploadAsset.uri);
+      } catch (error) {
+        console.warn('[avatar] Nao foi possivel compactar a imagem:', error?.message);
+      }
+
+      const data = await uploadAvatar(token, uploadAsset);
 
       if (!data?.user) {
         throw new Error('O servidor não retornou os dados atualizados.');
@@ -215,10 +271,24 @@ export default function ProfileScreen({
       await onSessionUpdated?.({ user: data.user });
       Alert.alert('Foto atualizada', 'Sua foto de perfil foi alterada com sucesso.');
     } catch (error) {
-      Alert.alert(
-        'Não foi possível atualizar a foto',
-        error.message || 'Escolha outra imagem e tente novamente.'
-      );
+      setPendingAvatarUri(null);
+
+      let message = error.message || 'Escolha outra imagem e tente novamente.';
+
+      // status 0 = falha de rede. Testamos a API para diferenciar "servidor
+      // fora do ar" de "envio da imagem recusado no meio do caminho".
+      if (error?.status === 0) {
+        try {
+          await health();
+          message +=
+            '\n\nA API está acessível, então o problema ocorreu durante o envio da foto. ' +
+            'Tente novamente com uma imagem JPG ou PNG.';
+        } catch {
+          message += '\n\nO teste de conexão com a API também falhou.';
+        }
+      }
+
+      Alert.alert('Não foi possível atualizar a foto', message);
     } finally {
       setUploadingAvatar(false);
     }
@@ -241,6 +311,7 @@ export default function ProfileScreen({
               throw new Error('O servidor não retornou os dados atualizados.');
             }
 
+            setPendingAvatarUri(null);
             await onSessionUpdated?.({ user: data.user });
             Alert.alert('Foto removida', 'Voltamos para o avatar padrão.');
           } catch (error) {
