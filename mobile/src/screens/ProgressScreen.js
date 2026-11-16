@@ -49,12 +49,14 @@ const EMPTY_GAMES = [
  * @param {Object} props
  * @param {string} props.token - Token JWT da sessão
  * @param {Object} props.user - Usuário da sessão (avatar do cabeçalho)
+ * @param {string|null} [props.profileImageUrl] - Foto de perfil já resolvida para URL absoluta
  * @param {Function} [props.onNavigateTab] - Navegação da barra inferior
  * @param {'inicio'|'jogos'|'progresso'|'perfil'} [props.activeTab='progresso']
  */
 export default function ProgressScreen({
   token,
   user,
+  profileImageUrl = null,
   onNavigateTab,
   activeTab = 'progresso',
 }) {
@@ -146,7 +148,11 @@ export default function ProgressScreen({
           accessibilityRole="button"
           accessibilityLabel={`Abrir perfil de ${user?.name || 'usuário'}`}
         >
-          <Feather name="user" size={18} color="#ffffff" />
+          {profileImageUrl ? (
+            <AvatarImage source={{ uri: profileImageUrl }} resizeMode="cover" />
+          ) : (
+            <Feather name="user" size={18} color="#ffffff" />
+          )}
         </AvatarButton>
       </Header>
 
@@ -355,6 +361,12 @@ const AvatarButton = styled.TouchableOpacity`
   background-color: #0f4c5c;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+`;
+
+const AvatarImage = styled.Image`
+  width: 100%;
+  height: 100%;
 `;
 
 const ContentScrollView = styled.ScrollView.attrs({

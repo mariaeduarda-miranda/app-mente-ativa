@@ -254,6 +254,7 @@ export default function App() {
       <ProgressScreen
         token={token}
         user={user}
+        profileImageUrl={resolveAssetUrl(user?.avatarUrl)}
         onNavigateTab={handleNavigateTab}
       />
     );

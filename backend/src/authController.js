@@ -52,6 +52,32 @@ function buildSession(row) {
 }
 
 /**
+ * Registra uma tentativa de login na tabela login_events.
+ *
+ * O pgAdmin nao enxerga logins do aplicativo em pg_stat_activity porque a API
+ * usa um pool: o login e uma requisicao HTTP curta, nao uma sessao do banco.
+ * Falha na auditoria nunca impede o login (apenas gera aviso no console).
+ */
+async function recordLoginAttempt({ req, user, email, success, reason }) {
+  try {
+    await query(
+      `INSERT INTO login_events (user_id, email, success, reason, ip, user_agent)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        user?.id || null,
+        normalizeEmail(email),
+        success,
+        reason || null,
+        (req.ip || '').slice(0, 64) || null,
+        (req.get('user-agent') || '').slice(0, 255) || null,
+      ]
+    );
+  } catch (error) {
+    console.warn('[auth] Nao foi possivel registrar o login:', error.message);
+  }
+}
+
+/**
  * POST /register
  * Cria uma conta nova. Nunca cria conta durante o login.
  */
@@ -110,12 +136,30 @@ async function login(req, res) {
   );
 
   if (!user || !passwordMatches) {
+    await recordLoginAttempt({
+      req,
+      user,
+      email,
+      success: false,
+      reason: user ? 'senha_incorreta' : 'email_nao_encontrado',
+    });
+
     return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
   }
 
   if (!user.is_active) {
+    await recordLoginAttempt({
+      req,
+      user,
+      email,
+      success: false,
+      reason: 'conta_desativada',
+    });
+
     return res.status(403).json({ error: 'Esta conta está desativada.' });
   }
+
+  await recordLoginAttempt({ req, user, email, success: true });
 
   return res.status(200).json(buildSession(user));
 }

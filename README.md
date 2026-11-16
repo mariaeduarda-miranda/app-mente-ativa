@@ -239,6 +239,95 @@ WebP. Ao trocar/remover a foto, o arquivo anterior é apagado automaticamente.
 > container, monte um volume persistente nela (ou troque por um storage externo
 > mantendo o mesmo `avatar_path`).
 
+### Histórico de logins (`004_login_events.sql`)
+
+A API usa um **pool de conexões**, então o login do app é apenas uma requisição
+HTTP curta: ele **não** aparece como sessão em `pg_stat_activity` (o pgAdmin só
+enxerga as conexões do pool). Para permitir auditoria, cada tentativa de login é
+gravada na tabela `login_events`:
+
+| Coluna | Tipo | Observação |
+|---|---|---|
+| `id` | BIGSERIAL | ordem cronológica |
+| `user_id` | UUID | FK `users(id)` com `ON DELETE SET NULL` |
+| `email` | TEXT | e-mail informado (fica gravado mesmo sem conta) |
+| `success` | BOOLEAN | `true` = login concluído |
+| `reason` | TEXT | `senha_incorreta`, `email_nao_encontrado`, `conta_desativada` |
+| `ip` | TEXT | IP de origem da requisição |
+| `user_agent` | TEXT | identificação do cliente (app, navegador etc.) |
+| `created_at` | TIMESTAMPTZ | `now()` |
+
+O registro é feito em `backend/src/authController.js` (`recordLoginAttempt`) e uma
+falha na auditoria nunca bloqueia o login. Falhas de validação (e-mail/senha vazios)
+retornam `400` antes da consulta e não são registradas.
+
+No **Query Tool** do pgAdmin, conectado ao banco `mente_ativa`, use:
+
+```sql
+-- últimas tentativas de login (mais recentes primeiro)
+SELECT id, email, success, reason, ip, user_agent, created_at
+  FROM login_events
+ ORDER BY id DESC
+ LIMIT 50;
+
+-- apenas logins bem-sucedidos
+SELECT created_at, email, ip, user_agent
+  FROM login_events
+ WHERE success
+ ORDER BY id DESC;
+
+-- apenas falhas
+SELECT created_at, email, reason, ip
+  FROM login_events
+ WHERE NOT success
+ ORDER BY id DESC;
+
+-- resumo do dia
+SELECT date_trunc('day', created_at) AS dia,
+       count(*) FILTER (WHERE success)     AS sucessos,
+       count(*) FILTER (WHERE NOT success) AS falhas
+  FROM login_events
+ GROUP BY 1
+ ORDER BY 1 DESC;
+
+-- histórico de um e-mail específico
+SELECT created_at, success, reason, ip
+  FROM login_events
+ WHERE lower(email) = lower('teste@menteativa.com')
+ ORDER BY id DESC;
+```
+
+> O Query Tool **não tem auto-refresh**: execute a consulta e pressione **F5**
+> para atualizar. Para acompanhar em tempo real pelo terminal, use
+> `psql` com `\watch 2`:
+>
+> ```powershell
+> docker exec -it mente-ativa-db psql -U mente_ativa -d mente_ativa -c "\watch 2" -c "SELECT id, email, success, reason, ip, created_at FROM login_events ORDER BY id DESC LIMIT 20;"
+> ```
+>
+> Os horários são gravados em UTC; o horário local (Brasília) é UTC−3.
+
+### Identificar a API nos logs do PostgreSQL
+
+As configurações de log (`log_statement`, `log_connections`, `log_disconnections`)
+são feitas no próprio Postgres e persistem no volume. Para separar o que é do
+aplicativo, o `.env` usa `application_name` na URL de conexão:
+
+```
+DATABASE_URL=postgres://mente_ativa:mente_ativa_dev@localhost:5432/mente_ativa?application_name=mente-ativa-api
+```
+
+Depois de reiniciar a API, os logs do banco mostram
+`application_name=mente-ativa-api`, e é possível filtrar:
+
+```powershell
+docker logs -f mente-ativa-db 2>&1 | Select-String -Pattern "mente-ativa-api"
+```
+
+> `http://localhost:5432` no navegador nunca funciona: o PostgreSQL usa o próprio
+> protocolo binário, não HTTP. O log registra `invalid length of startup packet`
+> quando alguém tenta. Use o pgAdmin (`http://localhost:5050`) ou `psql`.
+
 Inspecionar o banco:
 
 ```powershell
@@ -273,6 +362,8 @@ nada; apenas `npm run db:reset` (`down -v`) recria tudo do zero.
 - Fotos de perfil: apenas JPG/PNG/WebP até 5 MB; o nome do arquivo é gerado no
   servidor, a imagem é reprocessada (sem payload malicioso) e servida como
   estático com `X-Content-Type-Options: nosniff`.
+- Auditoria de logins em `login_events` (sucesso, motivo da falha, IP e user agent),
+  sem bloquear o login caso a gravação falhe.
 
 ## Solução de problemas
 
@@ -281,6 +372,8 @@ nada; apenas `npm run db:reset` (`down -v`) recria tudo do zero.
 | `docker` não é reconhecido | terminal aberto antes da instalação | feche e reabra o terminal |
 | `[db] Nao foi possivel conectar` | container parado | `npm run db:up` |
 | `porta 3000 em uso` | outra API rodando | encerre o processo ou troque `PORT` |
+| `localhost:5432` não abre no navegador | Postgres não fala HTTP | use o pgAdmin (5050) ou `psql`; é comportamento normal |
+| `login_events` vazia | nenhuma tentativa de login desde a migração | faça login no app e consulte de novo |
 | App não conecta no celular | IP errado/firewall | use `EXPO_PUBLIC_API_URL` e libere a porta 3000 |
 | `E-mail ou senha incorretos` com o usuário de teste | banco recriado sem seed | `npm run db:setup` |
 | `Muitas tentativas` | rate limit do login | aguarde 15 minutos |
