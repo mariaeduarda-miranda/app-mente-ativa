@@ -3,17 +3,6 @@ import { Platform } from 'react-native';
 import styled from 'styled-components/native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
-/**
- * Componente: BottomNavigation
- *
- * Barra de navegacao inferior compartilhada pelas telas do Mente Ativa.
- * Mantem os mesmos 4 destinos do protótipo (Início, Jogos, Progresso e Perfil),
- * com alvos de toque generosos para facilitar o uso por pessoas idosas.
- *
- * @param {Object} props
- * @param {'inicio'|'jogos'|'progresso'|'perfil'} [props.activeTab='inicio']
- * @param {Function} [props.onNavigateTab] - Recebe a chave da aba tocada
- */
 export default function BottomNavigation({ activeTab = 'inicio', onNavigateTab }) {
   return (
     <Container>

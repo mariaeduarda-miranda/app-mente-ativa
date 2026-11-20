@@ -1,16 +1,10 @@
 const path = require('path');
 
-// Carrega o .env da raiz do backend, independente do diretorio de execucao.
 require('dotenv').config({
   path: path.resolve(__dirname, '..', '.env'),
   quiet: true,
 });
 
-/**
- * Configuracao central da API.
- * Falha rapido (fail fast) quando algo essencial esta ausente ou invalido,
- * em vez de usar segredos padrao no codigo.
- */
 function required(name, { minLength = 1 } = {}) {
   const value = (process.env[name] || '').trim();
   if (!value) {
@@ -35,7 +29,6 @@ const config = {
   jwtIssuer: 'mente-ativa-api',
   corsOrigin: (process.env.CORS_ORIGIN || '*').trim(),
   bcryptRounds: Number.parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
-  // Fotos de perfil: arquivos otimizados em disco, apenas o caminho vai ao banco.
   uploadsDir: path.resolve(__dirname, '..', process.env.UPLOADS_DIR || 'uploads'),
   avatarMaxBytes: Number.parseInt(process.env.AVATAR_MAX_BYTES || '5242880', 10),
   avatarDimension: Number.parseInt(process.env.AVATAR_DIMENSION || '512', 10),

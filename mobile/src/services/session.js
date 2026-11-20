@@ -1,9 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/**
- * Persistencia local da sessao (token JWT + dados do usuario).
- * Centraliza as chaves do AsyncStorage para evitar strings soltas pelo app.
- */
 const KEYS = {
   token: '@mente_ativa:token',
   user: '@mente_ativa:user',
@@ -40,9 +36,6 @@ export async function clearSession() {
   await AsyncStorage.multiRemove([KEYS.token, KEYS.user]);
 }
 
-/**
- * "Lembrar de mim" guarda apenas o e-mail (nunca a senha).
- */
 export async function setRememberMe(email, enabled) {
   if (enabled) {
     await Promise.all([

@@ -10,22 +10,6 @@ const INSTRUCTIONS_TEXT =
   'Jogo da memória. Toque em duas cartas para virar e procure os pares iguais. ' +
   'Vire duas cartas por vez, no seu próprio ritmo, sem pressa.';
 
-/**
- * Tela do jogo "Jogo da Memória".
- *
- * Cada rodada sorteia 4 pares (8 cartas) do banco local. O usuário vira duas
- * cartas por vez; ao encontrar um par, as cartas ficam fixas em verde. Ao
- * concluir, envia o resultado para POST /progress/sessions com
- * gameKey "memoria".
- *
- * Métrica de acerto: cada tentativa (dupla de cartas viradas) conta como uma
- * "questão" e cada par encontrado como um "acerto", então a média do progresso
- * reflete a eficiência da memória (pares / tentativas).
- *
- * @param {Object} props
- * @param {string} props.token - Token JWT da sessão
- * @param {Function} [props.onBack] - Volta para a lista de jogos
- */
 export default function MemoryGameScreen({ token, onBack }) {
   const [board, setBoard] = useState(() => buildMemoryBoard(MEMORY_ROUND_PAIRS));
   const [flipped, setFlipped] = useState([]);
@@ -53,7 +37,6 @@ export default function MemoryGameScreen({ token, onBack }) {
     busyRef.current = false;
   }, []);
 
-  // Interrompe a leitura e os atrasos pendentes ao sair da tela.
   useEffect(() => {
     return () => {
       Speech.stop();
@@ -99,8 +82,6 @@ export default function MemoryGameScreen({ token, onBack }) {
         Math.round((Date.now() - startedAtRef.current) / 1000)
       );
 
-      // O backend aceita até 100 "questões" por partida. Em casos extremos de
-      // muitas tentativas, limitamos o total para não recusar o registro.
       const totalQuestions = Math.min(100, Math.max(attemptCount, pairs));
 
       await saveGameSession(token, {
@@ -127,7 +108,6 @@ export default function MemoryGameScreen({ token, onBack }) {
       return;
     }
 
-    // Primeira carta da dupla: apenas vira.
     if (flippedRef.current.length === 0) {
       flippedRef.current = [card.cardId];
       setFlipped([card.cardId]);
@@ -238,9 +218,6 @@ export default function MemoryGameScreen({ token, onBack }) {
 
       <ContentScrollView>
         {finished ? (
-          /* ======================================================
-             RESULTADO DA PARTIDA
-             ====================================================== */
           <ResultCard>
             <ResultIconCircle isGreat={resultAccuracy >= 50}>
               <Feather
@@ -315,9 +292,6 @@ export default function MemoryGameScreen({ token, onBack }) {
             </SecondaryButton>
           </ResultCard>
         ) : (
-          /* ======================================================
-             TABULEIRO
-             ====================================================== */
           <>
             <StatusCard>
               <StatusRow>
@@ -444,9 +418,6 @@ export default function MemoryGameScreen({ token, onBack }) {
   );
 }
 
-/* ========================================================
-   ESTILOS
-   ======================================================== */
 
 const Container = styled.SafeAreaView`
   flex: 1;

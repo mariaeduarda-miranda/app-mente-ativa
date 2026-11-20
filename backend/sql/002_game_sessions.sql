@@ -1,7 +1,3 @@
--- =============================================================================
--- Mente Ativa - Partidas concluidas (progresso por usuario)
--- Idempotente: pode ser executado varias vezes sem erro.
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS game_sessions (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -15,7 +11,6 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Consultas da tela "Meu Progresso" filtram por usuario e agrupam por jogo.
 CREATE INDEX IF NOT EXISTS game_sessions_user_game_idx
   ON game_sessions (user_id, game_key);
 

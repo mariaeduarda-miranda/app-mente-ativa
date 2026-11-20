@@ -4,12 +4,6 @@ const bcrypt = require('bcryptjs');
 const config = require('../src/config');
 const { pool, query } = require('../src/db');
 
-/**
- * Aplica todos os schemas de sql/ (em ordem alfabetica) de forma idempotente
- * e cria o usuario de teste definido no .env (SEED_USER_*).
- *
- * Uso: npm run db:setup
- */
 async function main() {
   const sqlDir = path.resolve(__dirname, '..', 'sql');
   const schemaFiles = fs

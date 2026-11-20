@@ -1,12 +1,6 @@
 const config = require('../src/config');
 const { pool, query } = require('../src/db');
 
-/**
- * Teste de fumaça do fluxo de autenticação.
- * Requer a API rodando (npm run dev) e o banco criado (npm run db:setup).
- *
- * Uso: npm run smoke
- */
 const API_URL = (process.env.API_URL || `http://127.0.0.1:${config.port}`).replace(/\/+$/, '');
 const runEmail = `smoke.${Date.now()}@menteativa.com`;
 const runPassword = 'Smoke@Teste123';
@@ -49,7 +43,6 @@ async function request(method, path, { body, token } = {}) {
   }
 }
 
-/** Envia um multipart de exemplo para testar a troca de foto de perfil. */
 async function uploadAvatarRequest(token, buffer) {
   const formData = new FormData();
   formData.append('avatar', new Blob([buffer], { type: 'image/png' }), 'avatar-smoke.png');
@@ -139,8 +132,6 @@ async function main() {
   const meWithBadToken = await request('GET', '/me', { token: 'token.invalido.aqui' });
   record('GET /me com token invalido e bloqueado (401)', meWithBadToken.status === 401, `status ${meWithBadToken.status}`);
 
-  // --- Foto de perfil -------------------------------------------------------
-  // PNG 1x1 valido: o sharp amplia/recorta e converte para WebP.
   const tinyPng = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
     'base64'

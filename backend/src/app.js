@@ -26,8 +26,6 @@ app.use(
 );
 app.use(express.json({ limit: '100kb' }));
 
-// Fotos de perfil: servidas como estaticas com cache imutavel. Cada troca de
-// imagem gera um nome novo, entao o cache do celular nunca fica desatualizado.
 app.use(
   '/uploads',
   express.static(config.uploadsDir, {
@@ -42,9 +40,6 @@ app.use(
   })
 );
 
-// --- Raiz: lista as rotas disponiveis --------------------------------------
-// Sem isso, abrir http://localhost:3000 no navegador devolvia 404, o que
-// confundia quem estava testando a API.
 app.get('/', (req, res) => {
   return res.status(200).json({
     name: 'Mente Ativa API',
@@ -67,7 +62,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// --- Healthcheck (usado pelo smoke test e para diagnostico) -----------------
 app.get('/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -81,7 +75,6 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// --- Rotas de autenticacao --------------------------------------------------
 app.post(
   '/register',
   rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }),
@@ -102,7 +95,6 @@ app.put(
   authController.changePassword
 );
 
-// --- Foto de perfil ---------------------------------------------------------
 app.put(
   '/me/avatar',
   authenticateJWT,
@@ -117,13 +109,9 @@ app.delete(
   avatarController.removeAvatar
 );
 
-// --- Progresso dos jogos ----------------------------------------------------
 app.post('/progress/sessions', authenticateJWT, progressController.createSession);
 app.get('/progress', authenticateJWT, progressController.summary);
 
-// --- 404 (rota inexistente) e 405 (metodo errado) ---------------------------
-// Ajuda quem testa a API pelo navegador: abrir /login no navegador faz um GET,
-// mas a rota so aceita POST. Antes isso retornava "Rota nao encontrada".
 const KNOWN_ROUTES = {
   '/': ['GET'],
   '/health': ['GET'],

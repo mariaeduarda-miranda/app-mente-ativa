@@ -1,11 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('./config');
 
-/**
- * Middleware de autenticacao JWT.
- * Exige o cabecalho "Authorization: Bearer <token>" e anexa o usuario
- * decodificado em req.user: { id, email, name }.
- */
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
 
@@ -19,7 +14,6 @@ function authenticateJWT(req, res, next) {
   }
 
   try {
-    // `sub` e o id do usuario; o token tambem precisa ter sido emitido por esta API.
     const decoded = jwt.verify(token, config.jwtSecret, { issuer: config.jwtIssuer });
     req.user = {
       id: decoded.sub,

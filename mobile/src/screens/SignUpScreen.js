@@ -31,12 +31,6 @@ import {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MIN_PASSWORD_LENGTH = 8;
 
-/**
- * Tela de Cadastro do Mente Ativa.
- *
- * Cria a conta via POST /register e, em caso de sucesso, o App.js ja
- * persiste a sessao retornada (token + usuario).
- */
 export default function SignUpScreen({ onBackPress, onSignUpSuccess, onNavigateToLogin }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

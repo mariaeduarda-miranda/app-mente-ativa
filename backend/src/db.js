@@ -1,10 +1,6 @@
 const { Pool } = require('pg');
 const config = require('./config');
 
-/**
- * Pool unico de conexoes com o PostgreSQL.
- * Em desenvolvimento local o banco roda no Docker (ver docker-compose.yml).
- */
 const pool = new Pool({
   connectionString: config.databaseUrl,
   max: 10,

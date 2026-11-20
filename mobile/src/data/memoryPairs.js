@@ -1,10 +1,3 @@
-/**
- * Banco de pares do "Jogo da Memória".
- *
- * Cada rodada sorteia 4 pares (8 cartas) e embaralha o tabuleiro, conforme
- * definido em buildMemoryBoard(). Os ícones são nomes do
- * MaterialCommunityIcons (@expo/vector-icons).
- */
 export const MEMORY_PAIRS = [
   { id: 'flor', label: 'Flor', icon: 'flower' },
   { id: 'sol', label: 'Sol', icon: 'white-balance-sunny' },
@@ -16,7 +9,6 @@ export const MEMORY_PAIRS = [
   { id: 'passaro', label: 'Pássaro', icon: 'bird' },
 ];
 
-/** Quantidade de pares por rodada (4 pares = 8 cartas). */
 export const MEMORY_ROUND_PAIRS = 4;
 
 function shuffle(items) {
@@ -30,10 +22,6 @@ function shuffle(items) {
   return copy;
 }
 
-/**
- * Monta o tabuleiro: sorteia os pares, duplica cada um e embaralha as cartas.
- * Cada carta recebe um `cardId` único para controlar as viradas.
- */
 export function buildMemoryBoard(size = MEMORY_ROUND_PAIRS) {
   const total = Math.min(size, MEMORY_PAIRS.length);
 

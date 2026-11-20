@@ -4,10 +4,6 @@ const { query } = require('./db');
 const { toPublicUser } = require('./authController');
 const { saveAvatar, deleteAvatar } = require('./avatarStorage');
 
-/**
- * Formatos aceitos no upload. O sharp converte tudo para WebP antes de gravar,
- * entao o formato original so precisa ser uma imagem suportada.
- */
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 function httpError(status, message) {
@@ -33,10 +29,6 @@ const upload = multer({
   },
 });
 
-/**
- * PUT /me/avatar (multipart/form-data, campo "avatar")
- * Substitui a foto de perfil do usuario autenticado.
- */
 async function updateAvatar(req, res) {
   if (!req.file) {
     return res.status(400).json({ error: 'Selecione uma imagem para enviar.' });
@@ -54,8 +46,6 @@ async function updateAvatar(req, res) {
 
   let rows;
   try {
-    // O CTE devolve o caminho antigo junto com a linha atualizada para que o
-    // arquivo anterior possa ser removido sem uma segunda consulta.
     ({ rows } = await query(
       `WITH previous AS (
          SELECT id, avatar_path
@@ -91,10 +81,6 @@ async function updateAvatar(req, res) {
   });
 }
 
-/**
- * DELETE /me/avatar
- * Remove a foto atual e volta ao avatar padrao do app.
- */
 async function removeAvatar(req, res) {
   const { rows } = await query(
     `WITH previous AS (

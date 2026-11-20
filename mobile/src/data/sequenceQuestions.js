@@ -1,9 +1,3 @@
-/**
- * Banco de sequências lógicas do jogo "Sequência Lógica".
- *
- * Cada partida sorteia 10 perguntas sem repetição e embaralha as opções,
- * conforme definido em buildSequenceRound().
- */
 export const SEQUENCE_QUESTIONS = [
   {
     id: 'q01',
@@ -167,7 +161,6 @@ export const SEQUENCE_QUESTIONS = [
   },
 ];
 
-/** Quantidade de perguntas em cada partida. */
 export const ROUND_SIZE = 10;
 
 function shuffle(items) {
@@ -181,9 +174,6 @@ function shuffle(items) {
   return copy;
 }
 
-/**
- * Monta uma partida: sorteia as perguntas e embaralha as opções de cada uma.
- */
 export function buildSequenceRound(size = ROUND_SIZE) {
   const total = Math.min(size, SEQUENCE_QUESTIONS.length);
 

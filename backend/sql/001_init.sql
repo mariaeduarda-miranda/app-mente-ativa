@@ -1,7 +1,3 @@
--- =============================================================================
--- Mente Ativa - Schema inicial (PostgreSQL 13+)
--- Idempotente: pode ser executado varias vezes sem erro.
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -15,10 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
   CONSTRAINT users_email_format CHECK (position('@' IN email) > 1)
 );
 
--- E-mail e unico sem diferenciar maiusculas/minusculas.
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_uidx ON users (lower(email));
 
--- Mantem updated_at sempre atualizado.
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN

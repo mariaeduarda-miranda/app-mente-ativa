@@ -1,15 +1,7 @@
 const jwt = require('jsonwebtoken');
 
-// Chave secreta compartilhada para validação dos tokens JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'mente-ativa-jwt-super-secret-key-2026';
 
-/**
- * Middleware de Autenticação JWT - authMiddleware.js
- *
- * Intercepta requisições protegidas nas Cloud Functions, verifica o cabeçalho
- * 'Authorization: Bearer <token>', decodifica o payload e anexa as informações
- * do usuário em req.user.
- */
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
 
@@ -19,7 +11,6 @@ function authenticateJWT(req, res, next) {
     });
   }
 
-  // O cabeçalho deve seguir o padrão: 'Bearer <token>'
   const parts = authHeader.split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') {
     return res.status(401).json({
@@ -31,7 +22,7 @@ function authenticateJWT(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // Disponibiliza { uid, email, name } nas próximas etapas
+    req.user = decoded;
     return next();
   } catch (error) {
     console.error('Erro na verificação do token JWT:', error.message);

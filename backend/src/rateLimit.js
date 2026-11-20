@@ -1,9 +1,3 @@
-/**
- * Rate limit simples em memoria (sem dependencias externas).
- *
- * Suficiente para desenvolvimento e para uma unica instancia da API.
- * Em producao com varias instancias, troque por Redis ou por um WAF.
- */
 function rateLimit({ windowMs = 15 * 60 * 1000, max = 10, message } = {}) {
   const attempts = new Map();
 

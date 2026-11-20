@@ -9,9 +9,6 @@ import {
 } from '../data/deductionQuestions';
 import { saveGameSession } from '../services/api';
 
-/**
- * Renderiza uma pista destacando os trechos entre **asteriscos**.
- */
 function ClueContent({ text }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
 
@@ -27,18 +24,6 @@ function ClueContent({ text }) {
   );
 }
 
-/**
- * Tela do jogo "Dedução Lógica".
- *
- * Cada partida sorteia 5 enigmas do banco local e embaralha as opções. O
- * usuário lê as pistas, marca uma alternativa e confirma; a resposta é então
- * bloqueada e explicada antes de seguir. Ao concluir, envia o resultado para
- * POST /progress/sessions com gameKey "deducao".
- *
- * @param {Object} props
- * @param {string} props.token - Token JWT da sessão
- * @param {Function} [props.onBack] - Volta para a lista de jogos
- */
 export default function DeductionGameScreen({ token, onBack }) {
   const [round, setRound] = useState(() =>
     buildDeductionRound(DEDUCTION_ROUND_SIZE)
@@ -64,7 +49,6 @@ export default function DeductionGameScreen({ token, onBack }) {
   const isLastQuestion = currentIndex + 1 >= total;
   const isCorrectAnswer = selected !== null && selected === question?.answer;
 
-  // Interrompe a leitura ao sair da tela.
   useEffect(() => {
     return () => {
       Speech.stop();
@@ -219,9 +203,6 @@ export default function DeductionGameScreen({ token, onBack }) {
 
       <ContentScrollView>
         {finished ? (
-          /* ======================================================
-             RESULTADO DA PARTIDA
-             ====================================================== */
           <ResultCard>
             <ResultIconCircle isGreat={accuracy >= 60}>
               <Feather
@@ -293,9 +274,6 @@ export default function DeductionGameScreen({ token, onBack }) {
             </SecondaryButton>
           </ResultCard>
         ) : (
-          /* ======================================================
-             ENIGMA ATUAL
-             ====================================================== */
           <>
             <CategoryRow>
               <CategoryPill>
@@ -477,9 +455,6 @@ export default function DeductionGameScreen({ token, onBack }) {
   );
 }
 
-/* ========================================================
-   ESTILOS
-   ======================================================== */
 
 const Container = styled.SafeAreaView`
   flex: 1;

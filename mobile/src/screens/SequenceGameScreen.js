@@ -6,18 +6,6 @@ import { Feather } from '@expo/vector-icons';
 import { buildSequenceRound, ROUND_SIZE } from '../data/sequenceQuestions';
 import { saveGameSession } from '../services/api';
 
-/**
- * Tela do jogo "Sequência Lógica".
- *
- * Cada partida sorteia 10 perguntas do banco local, embaralha as opções e
- * registra o resultado em POST /progress/sessions ao concluir. A resposta é
- * bloqueada após a escolha (acerto em verde, erro em vermelho com a correta
- * destacada), mantendo a pontuação objetiva.
- *
- * @param {Object} props
- * @param {string} props.token - Token JWT da sessão
- * @param {Function} [props.onBack] - Volta para a lista de jogos
- */
 export default function SequenceGameScreen({ token, onBack }) {
   const [round, setRound] = useState(() => buildSequenceRound(ROUND_SIZE));
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -38,7 +26,6 @@ export default function SequenceGameScreen({ token, onBack }) {
     ? 100
     : Math.round(((currentIndex + 1) / total) * 100);
 
-  // Interrompe a leitura ao sair da tela.
   useEffect(() => {
     return () => {
       Speech.stop();
@@ -183,9 +170,6 @@ export default function SequenceGameScreen({ token, onBack }) {
 
       <ContentScrollView>
         {finished ? (
-          /* ======================================================
-             RESULTADO DA PARTIDA
-             ====================================================== */
           <ResultCard>
             <ResultIconCircle isGreat={accuracy >= 60}>
               <Feather
@@ -257,9 +241,6 @@ export default function SequenceGameScreen({ token, onBack }) {
             </SecondaryButton>
           </ResultCard>
         ) : (
-          /* ======================================================
-             PERGUNTA ATUAL
-             ====================================================== */
           <>
             <Instruction>Qual número completa a sequência?</Instruction>
 
@@ -380,9 +361,6 @@ export default function SequenceGameScreen({ token, onBack }) {
   );
 }
 
-/* ========================================================
-   ESTILOS
-   ======================================================== */
 
 const Container = styled.SafeAreaView`
   flex: 1;

@@ -5,9 +5,6 @@ import * as Speech from 'expo-speech';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import BottomNavigation from '../components/BottomNavigation';
 
-/**
- * Texto lido pelo guia de voz (mesmo conteúdo do protótipo).
- */
 const VOICE_GUIDE_TEXT =
   'Tela de seleção de jogos. Opção um: Sequência Lógica, nível fácil. ' +
   'Descubra qual número ou padrão completa a sequência. ' +
@@ -15,10 +12,6 @@ const VOICE_GUIDE_TEXT =
   'Opção três: Dedução Lógica, nível médio. Leia as pistas com calma e descubra a resposta correta. ' +
   'Escolha tocando no botão do jogo desejado.';
 
-/**
- * Jogos disponíveis. Cada item carrega também as cores do card para manter
- * a distinção visual entre as categorias (lógica, memória e atenção).
- */
 const GAMES = [
   {
     key: 'sequencia',
@@ -64,18 +57,6 @@ const GAMES = [
   },
 ];
 
-/**
- * Tela de Jogos (Exercícios) do Mente Ativa.
- *
- * Apresenta os treinos cognitivos disponíveis com descrição e nível de
- * dificuldade. O botão de voz lê as opções em voz alta (expo-speech) e o
- * segundo toque interrompe a leitura, como no protótipo.
- *
- * @param {Object} props
- * @param {Function} [props.onGamePress] - Recebe o objeto do jogo escolhido
- * @param {Function} [props.onNavigateTab] - Navegação da barra inferior
- * @param {'inicio'|'jogos'|'progresso'|'perfil'} [props.activeTab='jogos']
- */
 export default function GamesScreen({
   onGamePress,
   onNavigateTab,
@@ -83,7 +64,6 @@ export default function GamesScreen({
 }) {
   const [isReading, setIsReading] = useState(false);
 
-  // Garante que a fala seja interrompida ao sair da tela.
   useEffect(() => {
     return () => {
       Speech.stop();
@@ -126,9 +106,6 @@ export default function GamesScreen({
     <Container>
       <StatusBar barStyle="dark-content" backgroundColor="#f3f8fa" />
 
-      {/* ========================================================
-          1. CABEÇALHO (Exercícios + guia de voz)
-          ======================================================== */}
       <Header>
         <HeaderLeft>
           <HeaderIconBox>
@@ -159,9 +136,6 @@ export default function GamesScreen({
         </VoiceButton>
       </Header>
 
-      {/* ========================================================
-          2. LISTA DE JOGOS
-          ======================================================== */}
       <ContentScrollView>
         <TitleSection>
           <PageTitle>Escolha seu jogo</PageTitle>
@@ -217,9 +191,6 @@ export default function GamesScreen({
   );
 }
 
-/* ========================================================
-   ESTILOS
-   ======================================================== */
 
 const Container = styled.SafeAreaView`
   flex: 1;

@@ -14,19 +14,6 @@ import ProgressScreen from './src/screens/ProgressScreen';
 import { loadSession, saveSession, clearSession } from './src/services/session';
 import { verifyToken, resolveAssetUrl } from './src/services/api';
 
-/**
- * Componente principal (App.js)
- *
- * Fluxo de navegacao:
- * - Inicia na HomeScreen (visual acolhedor).
- * - "Entrar e comecar" leva ao Login (ou direto para as atividades, se logado).
- * - Login valida as credenciais na API (Express + PostgreSQL + JWT).
- * - "Criar conta" leva a SignUpScreen.
- * - Perfil permite atualizar nome, e-mail e senha (PUT /me e /me/password).
- * - Jogos abre a Sequência Lógica, o Jogo da Memória e a Dedução Lógica.
- * - O Progresso mostra as partidas concluídas do usuário autenticado.
- * - Ao abrir o app, a sessao salva e revalidada no backend.
- */
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Home');
   const [user, setUser] = useState(null);
@@ -53,13 +40,11 @@ export default function App() {
           await saveSession({ token: storedToken, user: freshUser });
         }
       } catch (error) {
-        // Token invalido/expirado ou conta desativada: encerra a sessao local.
         if (error?.status === 401 || error?.status === 403) {
           await clearSession();
           setUser(null);
           setToken(null);
         } else {
-          // API indisponivel: mantem os dados em cache para nao deslogar sem motivo.
           setUser(cachedUser || null);
         }
       }
@@ -93,9 +78,6 @@ export default function App() {
     Alert.alert('Sessão encerrada', 'Você foi desconectado com sucesso.');
   };
 
-  /**
-   * Aplica a sessão renovada devolvida pela API após editar o perfil.
-   */
   const handleSessionUpdated = async ({ token: nextToken, user: nextUser }) => {
     const updatedUser = nextUser || user;
 

@@ -11,10 +11,6 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getProgress } from '../services/api';
 import BottomNavigation from '../components/BottomNavigation';
 
-/**
- * Visual de cada jogo na lista de atividades.
- * As chaves seguem o catalogo da API (game_key).
- */
 const GAME_META = {
   sequencia: {
     icon: 'numeric-1-circle-outline',
@@ -39,20 +35,6 @@ const EMPTY_GAMES = [
   { key: 'deducao', name: 'Dedução Lógica', sessions: 0, accuracy: 0 },
 ];
 
-/**
- * Tela "Meu Progresso".
- *
- * Consome GET /progress (agregado por usuário autenticado) e mostra partidas
- * concluídas, média geral de acertos e o percentual por jogo, além de um
- * resumo falado em voz alta.
- *
- * @param {Object} props
- * @param {string} props.token - Token JWT da sessão
- * @param {Object} props.user - Usuário da sessão (avatar do cabeçalho)
- * @param {string|null} [props.profileImageUrl] - Foto de perfil já resolvida para URL absoluta
- * @param {Function} [props.onNavigateTab] - Navegação da barra inferior
- * @param {'inicio'|'jogos'|'progresso'|'perfil'} [props.activeTab='progresso']
- */
 export default function ProgressScreen({
   token,
   user,
@@ -92,7 +74,6 @@ export default function ProgressScreen({
     loadProgress();
   }, [loadProgress]);
 
-  // Interrompe a leitura ao trocar de tela.
   useEffect(() => {
     return () => {
       Speech.stop();
@@ -131,9 +112,6 @@ export default function ProgressScreen({
     <Container>
       <StatusBar barStyle="dark-content" backgroundColor="#f3f8fa" />
 
-      {/* ========================================================
-          CABEÇALHO
-          ======================================================== */}
       <Header>
         <HeaderLeft>
           <HeaderIconBox>
@@ -197,9 +175,6 @@ export default function ProgressScreen({
               </ErrorCard>
             )}
 
-            {/* ==================================================
-                RESUMO GERAL
-                ================================================== */}
             <StatsRow accessibilityLabel="Resumo geral">
               <StatCard>
                 <StatValue tone="primary">{summary.totalSessions}</StatValue>
@@ -235,9 +210,6 @@ export default function ProgressScreen({
               </EmptyCard>
             )}
 
-            {/* ==================================================
-                ATIVIDADES
-                ================================================== */}
             <SectionTitle>Atividades</SectionTitle>
 
             <ActivitiesCard>
@@ -277,9 +249,6 @@ export default function ProgressScreen({
               })}
             </ActivitiesCard>
 
-            {/* ==================================================
-                RESUMO EM VOZ ALTA
-                ================================================== */}
             <ListenButton
               onPress={handleListen}
               activeOpacity={0.85}
@@ -315,9 +284,6 @@ export default function ProgressScreen({
   );
 }
 
-/* ========================================================
-   ESTILOS
-   ======================================================== */
 
 const Container = styled.SafeAreaView`
   flex: 1;

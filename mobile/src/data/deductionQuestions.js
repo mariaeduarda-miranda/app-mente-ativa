@@ -1,10 +1,3 @@
-/**
- * Banco de enigmas do jogo "Dedução Lógica".
- *
- * Cada partida sorteia 5 enigmas sem repetição e embaralha as opções,
- * conforme definido em buildDeductionRound(). Nos textos das pistas, o trecho
- * entre **asteriscos** é destacado em negrito na tela.
- */
 export const DEDUCTION_QUESTIONS = [
   {
     id: 'd01',
@@ -152,7 +145,6 @@ export const DEDUCTION_QUESTIONS = [
   },
 ];
 
-/** Quantidade de enigmas por partida. */
 export const DEDUCTION_ROUND_SIZE = 5;
 
 function shuffle(items) {
@@ -166,9 +158,6 @@ function shuffle(items) {
   return copy;
 }
 
-/**
- * Monta uma partida: sorteia os enigmas e embaralha as opções de cada um.
- */
 export function buildDeductionRound(size = DEDUCTION_ROUND_SIZE) {
   const total = Math.min(size, DEDUCTION_QUESTIONS.length);
 

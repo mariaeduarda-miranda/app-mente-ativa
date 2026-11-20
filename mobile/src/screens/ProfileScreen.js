@@ -38,7 +38,6 @@ const MONTHS = [
   'dezembro',
 ];
 
-/** Formata a data de criação da conta como "março de 2026". */
 function formatMemberSince(value) {
   if (!value) return null;
   const date = new Date(value);
@@ -46,21 +45,6 @@ function formatMemberSince(value) {
   return `${MONTHS[date.getMonth()]} de ${date.getFullYear()}`;
 }
 
-/**
- * Tela de Perfil do Mente Ativa.
- *
- * Exibe os dados do usuário autenticado e permite atualizar nome, e-mail e
- * senha (PUT /me e PUT /me/password). Também concentra a saída da conta.
- *
- * @param {Object} props
- * @param {Object} props.user - Usuário da sessão atual
- * @param {string} props.token - Token JWT da sessão
- * @param {Function} [props.onSessionUpdated] - Recebe a sessão renovada
- * @param {Function} [props.onLogout] - Encerra a sessão
- * @param {Function} [props.onBackPress] - Volta para a Home
- * @param {Function} [props.onNavigateTab] - Navegação da barra inferior
- * @param {'inicio'|'jogos'|'progresso'|'perfil'} [props.activeTab='perfil']
- */
 export default function ProfileScreen({
   user,
   token,
@@ -281,7 +265,6 @@ export default function ProfileScreen({
             <HeaderTitle>Perfil</HeaderTitle>
           </Header>
 
-          {/* Dados resumidos da conta */}
           <HeroCard>
             <AvatarButton
               onPress={handlePickAvatar}
@@ -333,7 +316,6 @@ export default function ProfileScreen({
             )}
           </HeroCard>
 
-          {/* Dados pessoais */}
           <SectionCard>
             <SectionTitle>Dados pessoais</SectionTitle>
             <SectionSubtitle>Atualize seu nome ou e-mail quando precisar.</SectionSubtitle>
@@ -386,7 +368,6 @@ export default function ProfileScreen({
             </SaveButton>
           </SectionCard>
 
-          {/* Alteração de senha */}
           <SectionCard>
             <PasswordHeader>
               <ViewFlex>
@@ -498,9 +479,6 @@ export default function ProfileScreen({
   );
 }
 
-/* ========================================================
-   ESTILOS
-   ======================================================== */
 
 const Container = styled.SafeAreaView`
   flex: 1;

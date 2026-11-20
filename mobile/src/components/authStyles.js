@@ -1,11 +1,6 @@
 import { Platform, StatusBar } from 'react-native';
 import styled from 'styled-components/native';
 
-/* ========================================================
-   Estilos compartilhados das telas de autenticação
-   (Login e Cadastro) — identidade visual do Mente Ativa:
-   fundo #f3f8fa, azul-petróleo #0f4c5c, cards brancos.
-   ======================================================== */
 
 export const Container = styled.SafeAreaView`
   flex: 1;

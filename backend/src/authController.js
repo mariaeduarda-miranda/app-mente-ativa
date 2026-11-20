@@ -4,10 +4,6 @@ const config = require('./config');
 const { query } = require('./db');
 const { normalizeEmail, validateRegistration, validateLogin, validatePassword, validateProfileUpdate } = require('./validators');
 
-/**
- * Hash "descartavel" usado para igualar o tempo de resposta quando o e-mail
- * nao existe, dificultando ataques de enumeracao de usuarios por timing.
- */
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync('dummy-password-for-timing', 10);
 
 function buildToken(user) {
@@ -25,10 +21,6 @@ function buildToken(user) {
   );
 }
 
-/**
- * Formato publico do usuario. `uid` e mantido como alias de `id` para
- * compatibilidade com a versao anterior do app mobile.
- */
 function toPublicUser(row) {
   return {
     id: row.id,
@@ -40,9 +32,6 @@ function toPublicUser(row) {
   };
 }
 
-/**
- * Gera a sessao (token + usuario) a partir de uma linha da tabela users.
- */
 function buildSession(row) {
   return {
     token: buildToken(row),
@@ -51,13 +40,6 @@ function buildSession(row) {
   };
 }
 
-/**
- * Registra uma tentativa de login na tabela login_events.
- *
- * O pgAdmin nao enxerga logins do aplicativo em pg_stat_activity porque a API
- * usa um pool: o login e uma requisicao HTTP curta, nao uma sessao do banco.
- * Falha na auditoria nunca impede o login (apenas gera aviso no console).
- */
 async function recordLoginAttempt({ req, user, email, success, reason }) {
   try {
     await query(
@@ -77,10 +59,6 @@ async function recordLoginAttempt({ req, user, email, success, reason }) {
   }
 }
 
-/**
- * POST /register
- * Cria uma conta nova. Nunca cria conta durante o login.
- */
 async function register(req, res) {
   const { name, email, password } = req.body || {};
 
@@ -91,8 +69,6 @@ async function register(req, res) {
 
   const passwordHash = await bcrypt.hash(password, config.bcryptRounds);
 
-  // O INSERT + ON CONFLICT evita corrida entre duas requisicoes simultaneas
-  // com o mesmo e-mail (o indice unico e em lower(email)).
   const { rows } = await query(
     `INSERT INTO users (name, email, password_hash)
      VALUES ($1, $2, $3)
@@ -108,11 +84,6 @@ async function register(req, res) {
   return res.status(201).json(buildSession(rows[0]));
 }
 
-/**
- * POST /login
- * Apenas autentica uma conta existente. Qualquer falha de credencial
- * retorna a mesma mensagem generica (evita enumeracao de e-mails).
- */
 async function login(req, res) {
   const { email, password } = req.body || {};
 
@@ -164,11 +135,6 @@ async function login(req, res) {
   return res.status(200).json(buildSession(user));
 }
 
-/**
- * GET /me (protegido por authenticateJWT)
- * Revalida o usuario no banco a cada chamada, garantindo que contas
- * desativadas ou removidas percam o acesso imediatamente.
- */
 async function me(req, res) {
   const { rows } = await query(
     `SELECT id, name, email, is_active, avatar_path, created_at, updated_at
@@ -186,11 +152,6 @@ async function me(req, res) {
   return res.status(200).json({ user: toPublicUser(user) });
 }
 
-/**
- * PUT /me (protegido por authenticateJWT)
- * Atualiza nome e/ou e-mail do usuario autenticado. Como o JWT carrega
- * nome e e-mail, um novo token e emitido para manter a sessao coerente.
- */
 async function updateProfile(req, res) {
   const { name, email } = req.body || {};
 
@@ -219,8 +180,6 @@ async function updateProfile(req, res) {
 
     return res.status(200).json(buildSession(user));
   } catch (error) {
-    // 23505 = violacao do indice unico em lower(email). Outros erros sobem
-    // para o tratamento centralizado (Express 5 encaminha rejeicoes async).
     if (error?.code === '23505') {
       return res.status(409).json({ error: 'Já existe uma conta com este e-mail.' });
     }
@@ -228,10 +187,6 @@ async function updateProfile(req, res) {
   }
 }
 
-/**
- * PUT /me/password (protegido por authenticateJWT)
- * Troca a senha mediante confirmacao da senha atual.
- */
 async function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body || {};
 
@@ -275,10 +230,6 @@ async function changePassword(req, res) {
   return res.status(200).json({ message: 'Senha atualizada com sucesso.' });
 }
 
-/**
- * POST /verifyToken (e equivalente ao GET /me)
- * Mantido para compatibilidade com a versao anterior do app mobile.
- */
 async function verifyToken(req, res) {
   let token = null;
 
@@ -321,7 +272,6 @@ module.exports = {
   updateProfile,
   changePassword,
   verifyToken,
-  // Exportados para testes/reuso.
   buildSession,
   toPublicUser,
 };

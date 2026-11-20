@@ -34,13 +34,6 @@ import {
   SignUpLink,
 } from '../components/authStyles';
 
-/**
- * Tela de Login do Mente Ativa.
- *
- * Integra com POST /login (Express + PostgreSQL + JWT). A senha e validada
- * no servidor com bcrypt; aqui apenas verificamos se os campos foram
- * preenchidos. Política de senha e responsabilidade do cadastro.
- */
 export default function LoginScreen({
   navigation,
   onLoginSuccess,
@@ -54,7 +47,6 @@ export default function LoginScreen({
   const [rememberMe, setRememberMeChecked] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Restaura o e-mail salvo pela opção "Lembrar de mim".
   useEffect(() => {
     let isActive = true;
 
@@ -95,7 +87,6 @@ export default function LoginScreen({
 
       await setRememberMe(email.trim(), rememberMe);
 
-      // O App.js persiste a sessão e atualiza o estado global.
       onLoginSuccess?.(data);
     } catch (error) {
       console.error('Erro durante o login:', error);

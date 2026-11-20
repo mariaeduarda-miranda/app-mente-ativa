@@ -1,9 +1,5 @@
 const { query } = require('./db');
 
-/**
- * Catalogo dos jogos exibidos na tela "Meu Progresso".
- * A ordem aqui e a ordem usada na resposta da API.
- */
 const GAME_CATALOG = [
   { key: 'sequencia', name: 'Sequência Lógica' },
   { key: 'memoria', name: 'Jogo da Memória' },
@@ -12,7 +8,7 @@ const GAME_CATALOG = [
 
 const GAME_KEYS = new Set(GAME_CATALOG.map((game) => game.key));
 const MAX_QUESTIONS = 100;
-const MAX_DURATION_SECONDS = 24 * 60 * 60; // 24h
+const MAX_DURATION_SECONDS = 24 * 60 * 60;
 
 function toInteger(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -26,10 +22,6 @@ function parseOptionalDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/**
- * Valida o payload de uma partida concluida.
- * Retorna { errors, session } — session com os valores normalizados.
- */
 function validateSession(body) {
   const { gameKey, totalQuestions, correctAnswers, durationSeconds, startedAt } = body || {};
   const errors = [];
@@ -67,10 +59,6 @@ function validateSession(body) {
   };
 }
 
-/**
- * POST /progress/sessions (protegido por authenticateJWT)
- * Registra uma partida concluida do usuario autenticado.
- */
 async function createSession(req, res) {
   const { errors, session } = validateSession(req.body);
 
@@ -108,10 +96,6 @@ async function createSession(req, res) {
   });
 }
 
-/**
- * GET /progress (protegido por authenticateJWT)
- * Resumo agregado das partidas do usuario autenticado.
- */
 async function summary(req, res) {
   const [summaryResult, gamesResult] = await Promise.all([
     query(

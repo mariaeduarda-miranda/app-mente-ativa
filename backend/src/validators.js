@@ -1,6 +1,6 @@
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MIN_PASSWORD_LENGTH = 8;
-const MAX_PASSWORD_LENGTH = 72; // limite do bcrypt
+const MAX_PASSWORD_LENGTH = 72;
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -33,9 +33,6 @@ function validateName(name) {
   return null;
 }
 
-/**
- * Valida o payload de cadastro. Retorna a lista de erros encontrados.
- */
 function validateRegistration({ name, email, password }) {
   return [
     validateName(name),
@@ -44,20 +41,12 @@ function validateRegistration({ name, email, password }) {
   ].filter(Boolean);
 }
 
-/**
- * Valida o payload de login. Nao aplica politica de senha: senhas antigas
- * (ou criadas por outros meios) devem continuar conseguindo autenticar.
- */
 function validateLogin({ email, password }) {
   return [validateEmail(email), validatePassword(password, { isRegistration: false })].filter(
     Boolean
   );
 }
 
-/**
- * Valida a atualizacao de perfil. Somente os campos enviados sao validados,
- * e ao menos um deles precisa estar presente.
- */
 function validateProfileUpdate({ name, email }) {
   const errors = [];
   let hasField = false;
